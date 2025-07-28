@@ -23,7 +23,6 @@ int main(int argc, char *argv[])
             printf("rewindtty version %s\n", REWINDTTY_VERSION);
             return 0;
         }
-        // altre opzioni...
     }
 
     const char *session_file = DEFAULT_SESSION_FILE;
