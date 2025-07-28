@@ -1,11 +1,9 @@
 # RewindTTY
 
 <p align="center">
-  <a href="https://opencode.ai">
-    <picture>
-      <img src="assets/demo.gif" alt="rewindtty demo">
-    </picture>
-  </a>
+  <picture>
+    <img src="assets/demo.gif" alt="rewindtty demo">
+  </picture>
 </p>
 
 A terminal session recorder and replayer written in C that allows you to capture and replay terminal sessions with precise timing.
@@ -47,29 +45,29 @@ make clean
 To start recording a terminal session:
 
 ```bash
-./build/rewindtty record
+./build/rewindtty record [file]
 ```
 
-This will create a new session file at `data/session.tl.json` and begin capturing all terminal activity.
+This will create a new session file (defaults to `data/session.json` if no file is specified) and begin capturing all terminal activity.
 
 ### Replaying a Session
 
 To replay a previously recorded session:
 
 ```bash
-./build/rewindtty replay
+./build/rewindtty replay [file]
 ```
 
-This will read the session file from `data/session.tl.json` and replay it with the original timing.
+This will read the session file (defaults to `data/session.json` if no file is specified) and replay it with the original timing.
 
 ### Command Line Options
 
 ```
-Usage: rewindtty [record|replay]
+Usage: rewindtty [record|replay] [file]
 
 Commands:
-  record    Start recording a new terminal session
-  replay    Replay the last recorded session
+  record [file]    Start recording a new terminal session to specified file (default: data/session.json)
+  replay [file]    Replay a recorded session from specified file (default: data/session.json)
 ```
 
 ## File Structure
@@ -85,15 +83,18 @@ rewindtty/
 │   ├── utils.c         # Utility functions
 │   └── utils.h         # Utility function declarations
 ├── data/
-│   └── session.tl.json # Default session storage file
+│   └── session.json    # Default session storage file
 ├── build/              # Build output directory
+├── assets/
+│   └── demo.gif        # Demo animation
+├── LICENSE             # MIT License
 ├── Makefile           # Build configuration
 └── README.md          # This file
 ```
 
 ## Session File Format
 
-Sessions are stored in JSON format in the `data/session.tl.json` file. The format captures timing information and terminal data to enable accurate replay.
+Sessions are stored in JSON format in the `data/session.json` file. The format captures timing information and terminal data to enable accurate replay.
 
 ## Signal Handling
 
@@ -123,7 +124,9 @@ The project uses the following GCC flags:
 
 ## License
 
-This project is under MIT license.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Copyright (c) 2025 Andrea Debernardi
 
 ## Technical Notes
 
