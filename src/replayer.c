@@ -69,7 +69,7 @@ void start_replay(const char *filename)
                 int delay = current_ts - last_ts;
                 if (delay > 0 && delay < 10)
                 {
-                    sleep(delay); // simula il tempo tra i comandi
+                    sleep(delay); // simulates the time between commands
                 }
             }
 
