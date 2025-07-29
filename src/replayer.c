@@ -26,13 +26,11 @@ void start_replay(const char *filename)
     char stderr_buf[MAX_LINE * 10] = "";
     time_t last_ts = 0;
     time_t current_ts = 0;
-    int in_entry = 0;
 
     while (fgets(line, sizeof(line), fp))
     {
         if (strstr(line, "{"))
         {
-            in_entry = 1;
             command[0] = '\0';
             output[0] = '\0';
             stderr_buf[0] = '\0';
@@ -62,8 +60,6 @@ void start_replay(const char *filename)
 
         if (strstr(line, "}"))
         {
-            in_entry = 0;
-
             if (last_ts != 0 && current_ts != 0)
             {
                 int delay = current_ts - last_ts;
