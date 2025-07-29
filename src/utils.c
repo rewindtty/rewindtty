@@ -10,6 +10,37 @@
 
 #define BUF_SIZE 256
 
+char *read_file(const char *filename)
+{
+    FILE *fp = fopen(filename, "r");
+    if (!fp)
+    {
+        perror("fopen");
+        return NULL;
+    }
+
+    fseek(fp, 0, SEEK_END);
+
+    long file_length = ftell(fp);
+    rewind(fp);
+
+    char *content = malloc(file_length + 1);
+
+    if (!content)
+    {
+        fclose(fp);
+        return NULL;
+    }
+
+    fread(content, 1, file_length, fp);
+
+    content[file_length] = '\0';
+
+    fclose(fp);
+
+    return content;
+}
+
 Output exec_and_capture(const char *command)
 {
     int outpipe[2];
@@ -135,109 +166,4 @@ void free_output(Output *out)
     out->stderr_buf = NULL;
     out->stdout_size = 0;
     out->stderr_size = 0;
-}
-
-char *escape_json_string(char *input)
-{
-    char *sanitized = malloc(strlen(input) * 2 + 1);
-    if (sanitized)
-    {
-        char *src = input;
-        char *dst = sanitized;
-        while (*src)
-        {
-            if (*src == '"')
-            {
-                *dst++ = '\\';
-                *dst++ = '"';
-            }
-            else if (*src == '\n')
-            {
-                *dst++ = '\\';
-                *dst++ = 'n';
-            }
-            else
-            {
-                *dst++ = *src;
-            }
-            src++;
-        }
-        *dst = '\0';
-        return sanitized;
-    }
-    return "";
-}
-
-char *extract_json_field(const char *line, const char *field)
-{
-    static char buffer[MAX_LINE];
-    char *start = strstr(line, field);
-    if (!start)
-        return NULL;
-    start = strchr(start, ':');
-    if (!start)
-        return NULL;
-    start++;
-    while (*start == ' ' || *start == '"')
-        start++;
-    char *end = start;
-    while (*end && *end != '"' && *end != '\n' && *end != ',')
-        end++; // stop anche a virgola
-    size_t len = end - start;
-    if (len >= MAX_LINE)
-        len = MAX_LINE - 1;
-    strncpy(buffer, start, len);
-    buffer[len] = '\0';
-    return buffer;
-}
-
-char *unescape_json_string(const char *str)
-{
-    if (!str)
-        return NULL;
-
-    size_t len = strlen(str);
-    char *result = malloc(len + 1); // worst case: no escapes
-    if (!result)
-        return NULL;
-
-    char *dst = result;
-    const char *src = str;
-
-    while (*src)
-    {
-        if (*src == '\\')
-        {
-            src++;
-            switch (*src)
-            {
-            case 'n':
-                *dst++ = '\n';
-                break;
-            case 't':
-                *dst++ = '\t';
-                break;
-            case 'r':
-                *dst++ = '\r';
-                break;
-            case '\\':
-                *dst++ = '\\';
-                break;
-            case '"':
-                *dst++ = '"';
-                break;
-            default:
-                *dst++ = *src;
-                break;
-            }
-            src++;
-        }
-        else
-        {
-            *dst++ = *src++;
-        }
-    }
-
-    *dst = '\0';
-    return result;
 }

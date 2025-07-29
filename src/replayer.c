@@ -1,5 +1,6 @@
 #include "replayer.h"
 #include "utils.h"
+#include "cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,53 +14,45 @@
 
 void start_replay(const char *filename)
 {
-    FILE *fp = fopen(filename, "r");
-    if (!fp)
+    char *content = read_file(filename);
+    if (content == NULL)
     {
-        perror("fopen");
+        fprintf(stderr, "Error reading file: %s", filename);
         return;
     }
 
-    char line[MAX_LINE];
-    char command[MAX_LINE] = "";
-    char output[MAX_LINE * 10] = "";
-    char stderr_buf[MAX_LINE * 10] = "";
+    cJSON *session = cJSON_Parse(content);
+
+    if (session == NULL)
+    {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+        goto replay_end;
+    }
+
+    cJSON *step = NULL;
     time_t last_ts = 0;
     time_t current_ts = 0;
 
-    while (fgets(line, sizeof(line), fp))
+    cJSON_ArrayForEach(step, session)
     {
-        if (strstr(line, "{"))
-        {
-            command[0] = '\0';
-            output[0] = '\0';
-            stderr_buf[0] = '\0';
-            current_ts = 0;
-            continue;
-        }
+        cJSON *timestamp = cJSON_GetObjectItemCaseSensitive(step, "timestamp");
+        cJSON *command = cJSON_GetObjectItemCaseSensitive(step, "command");
+        cJSON *output = cJSON_GetObjectItemCaseSensitive(step, "output");
+        cJSON *std_err = cJSON_GetObjectItemCaseSensitive(step, "stderr");
 
-        if (strstr(line, "timestamp"))
+        if (
+            command != NULL &&
+            timestamp != NULL &&
+            output != NULL &&
+            std_err != NULL)
         {
-            current_ts = (time_t)atol(extract_json_field(line, "timestamp"));
-        }
 
-        if (strstr(line, "command"))
-        {
-            strncpy(command, extract_json_field(line, "command"), sizeof(command));
-        }
+            current_ts = timestamp->valueint;
 
-        if (strstr(line, "output"))
-        {
-            strncpy(output, extract_json_field(line, "output"), sizeof(output));
-        }
-
-        if (strstr(line, "stderr"))
-        {
-            strncpy(stderr_buf, extract_json_field(line, "stderr"), sizeof(stderr_buf));
-        }
-
-        if (strstr(line, "}"))
-        {
             if (last_ts != 0 && current_ts != 0)
             {
                 int delay = current_ts - last_ts;
@@ -71,25 +64,19 @@ void start_replay(const char *filename)
 
             last_ts = current_ts;
 
-            // Replay print
-            printf(COLOR_BLUE "rewindtty> %s\n" COLOR_RESET, command);
+            printf(COLOR_BLUE "rewindtty> %s\n" COLOR_RESET, command->valuestring);
 
-            char *decoded_out = unescape_json_string(output);
-            char *decoded_err = unescape_json_string(stderr_buf);
-
-            if (decoded_out && *decoded_out)
+            if (output->valuestring)
             {
-                printf(COLOR_GREEN "%s" COLOR_RESET, decoded_out);
+                printf(COLOR_GREEN "%s" COLOR_RESET, output->valuestring);
             }
-            if (decoded_err && *decoded_err)
+            if (std_err->valuestring)
             {
-                fprintf(stderr, COLOR_RED "%s" COLOR_RESET, decoded_err);
+                fprintf(stderr, COLOR_RED "%s" COLOR_RESET, std_err->valuestring);
             }
-
-            free(decoded_out);
-            free(decoded_err);
         }
     }
 
-    fclose(fp);
+replay_end:
+    cJSON_Delete(session);
 }

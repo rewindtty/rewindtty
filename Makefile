@@ -2,7 +2,8 @@ VERSION=0.0.1-dev
 CC=gcc
 CFLAGS=-Wall -Wextra -std=gnu99 -g
 CFLAGS += -DREWINDTTY_VERSION=\"$(VERSION)\"
-OBJ=src/main.o src/recorder.o src/replayer.o src/utils.o
+CFLAGS += -Ilibs/cjson
+OBJ=src/main.o src/recorder.o src/replayer.o src/utils.o libs/cjson/cJSON.o
 OUT=build/rewindtty
 
 all: $(OUT)
@@ -13,4 +14,4 @@ $(OUT): $(OBJ)
 
 clean:
 	rm -rf build
-	rm -f src/*.o
+	rm -f src/*.o libs/cjson/*.o
