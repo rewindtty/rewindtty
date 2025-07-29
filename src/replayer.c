@@ -37,6 +37,16 @@ void start_replay(const char *filename)
     time_t last_ts = 0;
     time_t current_ts = 0;
 
+    if (session == NULL)
+    {
+        fprintf(stderr, "Session is empty");
+        exit(0);
+    }
+
+    // start with a small delay 1s
+
+    sleep(1);
+
     cJSON_ArrayForEach(step, session)
     {
         cJSON *timestamp = cJSON_GetObjectItemCaseSensitive(step, "timestamp");

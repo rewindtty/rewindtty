@@ -16,6 +16,12 @@
 int main(int argc, char *argv[])
 {
 
+    if (argc < 2)
+    {
+        fprintf(stderr, "Usage: %s <record|replay> [session_file]\n", argv[0]);
+        return 1;
+    }
+
     if (argc > 1)
     {
         if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0)
@@ -40,11 +46,6 @@ int main(int argc, char *argv[])
 #endif
     }
 
-    if (argc < 2)
-    {
-        fprintf(stderr, "Usage: %s <record|replay> [session_file]\n", argv[0]);
-        return 1;
-    }
 
     if (strcmp(argv[1], "record") == 0)
     {
