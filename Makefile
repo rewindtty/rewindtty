@@ -1,4 +1,4 @@
-VERSION=0.0.1-dev
+VERSION=0.0.2-dev
 CC=gcc
 CFLAGS=-Wall -Wextra -std=gnu99 -g
 CFLAGS += -DREWINDTTY_VERSION=\"$(VERSION)\"
