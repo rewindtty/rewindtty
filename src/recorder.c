@@ -11,6 +11,8 @@
 
 static FILE *fp = NULL;
 static int first = 1;
+static int child_running = 0;
+static pid_t current_child_pid = 0;
 
 void close_session_file(void)
 {
@@ -24,6 +26,13 @@ void close_session_file(void)
 
 void signal_handler(int signal)
 {
+    if (signal == SIGINT && child_running && current_child_pid > 0)
+    {
+        kill(current_child_pid, SIGINT);
+        return;
+    }
+
+    // Altrimenti gestisci normalmente
     printf("\n[!] Signal received (%d), I will close session file...\n", signal);
     close_session_file();
     _exit(1); // exit and avoid unsecure calls in signal handler
@@ -97,7 +106,10 @@ void start_recording(const char *filename)
         if (strcmp(command, "exit") == 0)
             break;
 
-        Output out = exec_and_capture(command);
+        Output out = exec_and_capture(
+            command,
+            &child_running,
+            &current_child_pid);
         time_t timestamp = time(NULL);
 
         if (!first)

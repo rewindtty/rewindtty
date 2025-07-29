@@ -2,6 +2,7 @@
 #define UTILS_H
 
 #include <stddef.h>
+#include <unistd.h>
 
 typedef struct
 {
@@ -11,7 +12,10 @@ typedef struct
     size_t stderr_size;
 } Output;
 
-Output exec_and_capture(const char *command);
+Output exec_and_capture(
+    const char *command,
+    int *child_running,
+    pid_t *current_child_pid);
 void free_output(Output *out);
 char *read_file(const char *filename);
 #endif

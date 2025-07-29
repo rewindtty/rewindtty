@@ -1,12 +1,11 @@
 #include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <unistd.h>
+#include <signal.h>
 
 #define BUF_SIZE 256
 
@@ -41,7 +40,10 @@ char *read_file(const char *filename)
     return content;
 }
 
-Output exec_and_capture(const char *command)
+Output exec_and_capture(
+    const char *command,
+    int *child_running,
+    pid_t *current_child_pid)
 {
     int outpipe[2];
     int errpipe[2];
@@ -61,11 +63,18 @@ Output exec_and_capture(const char *command)
         return out;
     }
 
+    *current_child_pid = pid;
+    *child_running = 1;
+
     if (pid == 0)
     {
         // Child process
         close(outpipe[0]);
         close(errpipe[0]);
+
+        signal(SIGINT, SIG_DFL);
+        signal(SIGTERM, SIG_DFL);
+        signal(SIGHUP, SIG_DFL);
 
         dup2(outpipe[1], STDOUT_FILENO);
         dup2(errpipe[1], STDERR_FILENO);
@@ -79,7 +88,6 @@ Output exec_and_capture(const char *command)
     }
     else
     {
-        // Father process
         close(outpipe[1]);
         close(errpipe[1]);
 
@@ -144,6 +152,9 @@ Output exec_and_capture(const char *command)
         }
 
         waitpid(pid, &status, 0);
+
+        *child_running = 0;
+        *current_child_pid = 0;
 
         if (out.stdout_buf)
             out.stdout_buf[out.stdout_size] = '\0';
