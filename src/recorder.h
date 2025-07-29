@@ -2,6 +2,7 @@
 #define RECORDER_H
 
 #include <stddef.h>
+#include <time.h>
 
 void close_session_file(void);
 void signal_handler(int signal);
