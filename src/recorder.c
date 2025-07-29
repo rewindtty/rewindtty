@@ -106,10 +106,22 @@ void start_recording(const char *filename)
         if (strcmp(command, "exit") == 0)
             break;
 
+        const char *shell_path = getenv("SHELL");
+        if (!shell_path)
+            shell_path = "/bin/sh";
+
+        if (!file_exists(shell_path))
+        {
+            fprintf(stdout, "Shell identified does not exists (%s)", shell_path);
+            exit(1);
+        }
+
         Output out = exec_and_capture(
             command,
+            shell_path,
             &child_running,
             &current_child_pid);
+
         time_t timestamp = time(NULL);
 
         if (!first)

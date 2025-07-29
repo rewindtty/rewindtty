@@ -14,8 +14,10 @@ typedef struct
 
 Output exec_and_capture(
     const char *command,
+    const char *shell_path,
     int *child_running,
     pid_t *current_child_pid);
 void free_output(Output *out);
 char *read_file(const char *filename);
+int file_exists(const char *filename);
 #endif

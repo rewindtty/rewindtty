@@ -42,6 +42,7 @@ char *read_file(const char *filename)
 
 Output exec_and_capture(
     const char *command,
+    const char *shell_path,
     int *child_running,
     pid_t *current_child_pid)
 {
@@ -82,7 +83,7 @@ Output exec_and_capture(
         close(outpipe[1]);
         close(errpipe[1]);
 
-        execl("/bin/sh", "sh", "-c", command, (char *)NULL);
+        execl(shell_path, shell_path, "-c", command, (char *)NULL);
         perror("execl");
         exit(1);
     }
@@ -163,6 +164,18 @@ Output exec_and_capture(
 
         return out;
     }
+}
+
+int file_exists(const char *filename)
+{
+    FILE *fp = fopen(filename, "r");
+    int is_exist = 0;
+    if (fp != NULL)
+    {
+        is_exist = 1;
+        fclose(fp);
+    }
+    return is_exist;
 }
 
 void free_output(Output *out)
