@@ -1,6 +1,6 @@
 <p align="center">
   <picture>
-    <img src="assets/logo.png" alt="rewindtty demo">
+    <img style="max-width:400px;height:auto"  src="assets/logo.png" alt="rewindtty logo">
   </picture>
 </p>
 
