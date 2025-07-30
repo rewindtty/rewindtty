@@ -12,6 +12,12 @@ typedef struct
     size_t stderr_size;
 } Output;
 
+typedef enum
+{
+    OUTPUT_FILE,
+    OUTPUT_PASTEBIN
+} OutputType;
+
 Output exec_and_capture(
     const char *command,
     const char *shell_path,
@@ -20,4 +26,5 @@ Output exec_and_capture(
 void free_output(Output *out);
 char *read_file(const char *filename);
 int file_exists(const char *filename);
+OutputType detect_output_type(const char *input);
 #endif

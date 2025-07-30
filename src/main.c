@@ -46,7 +46,6 @@ int main(int argc, char *argv[])
 #endif
     }
 
-
     if (strcmp(argv[1], "record") == 0)
     {
         start_recording(session_file);

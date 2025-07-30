@@ -1,5 +1,6 @@
 #include "recorder.h"
 #include "cJSON.h"
+#include "http.h"
 #include "utils.h"
 #include <stdio.h>
 #include <time.h>
@@ -13,15 +14,32 @@ static FILE *fp = NULL;
 static int first = 1;
 static int child_running = 0;
 static pid_t current_child_pid = 0;
+static OutputType output_type = OUTPUT_FILE;
 
-void close_session_file(void)
+void finalize_session(void)
 {
-    if (fp)
+    if (!fp)
     {
-        fprintf(fp, "\n]\n");
-        fclose(fp);
-        fp = NULL;
+        return;
     }
+
+    if (output_type == OUTPUT_PASTEBIN)
+    {
+        printf("Uploading file...");
+        cJSON *json_body = cJSON_CreateObject();
+        if (json_body == NULL)
+        {
+            fprintf(stderr, "Unable to create JSON body for uploading file.");
+            goto exit_creation;
+        }
+
+        request_http_post("https://jsonhosting.com/api/json", json_body);
+    }
+
+exit_creation:
+    fprintf(fp, "\n]\n");
+    fclose(fp);
+    fp = NULL;
 }
 
 void signal_handler(int signal)
@@ -32,9 +50,8 @@ void signal_handler(int signal)
         return;
     }
 
-    // Altrimenti gestisci normalmente
     printf("\n[!] Signal received (%d), I will close session file...\n", signal);
-    close_session_file();
+    finalize_session();
     _exit(1); // exit and avoid unsecure calls in signal handler
 }
 
@@ -78,19 +95,36 @@ exit_creation:
     return string;
 }
 
-void start_recording(const char *filename)
+void start_recording(const char *filename_or_pastebin)
 {
-    char command[1024];
 
-    signal(SIGINT, signal_handler);
-    signal(SIGTERM, signal_handler);
-    signal(SIGHUP, signal_handler);
+    output_type = detect_output_type(filename_or_pastebin);
+
+    char *filename = NULL;
+
+    if (output_type == OUTPUT_PASTEBIN)
+    {
+        const char tmp_session_file_path[] = "/tmp/session.json";
+        filename = malloc(sizeof(tmp_session_file_path));
+        strcpy(filename, tmp_session_file_path);
+    }
+    else
+    {
+        filename = strdup(filename_or_pastebin);
+        printf("Output will be written on %s\n", filename);
+    }
 
     fp = fopen(filename, "w");
     if (!fp)
     {
         perror("fopen");
     }
+
+    char command[1024];
+
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+    signal(SIGHUP, signal_handler);
 
     fprintf(fp, "[\n");
     first = 1;
@@ -141,5 +175,5 @@ void start_recording(const char *filename)
         free_output(&out);
     }
 
-    close_session_file();
+    finalize_session();
 }

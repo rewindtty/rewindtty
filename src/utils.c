@@ -178,6 +178,15 @@ int file_exists(const char *filename)
     return is_exist;
 }
 
+OutputType detect_output_type(const char *input)
+{
+    if (strcmp(input, "pastebin") == 0)
+    {
+        return OUTPUT_PASTEBIN;
+    }
+    return OUTPUT_FILE;
+}
+
 void free_output(Output *out)
 {
     if (!out)
