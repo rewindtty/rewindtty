@@ -1,12 +1,16 @@
-# RewindTTY
+<p align="center">
+  <picture>
+    <img src="assets/logo.png" alt="rewindtty demo">
+  </picture>
+</p>
+
+A terminal session recorder and replayer written in C that allows you to capture and replay terminal sessions with precise timing.
 
 <p align="center">
   <picture>
     <img src="assets/demo.gif" alt="rewindtty demo">
   </picture>
 </p>
-
-A terminal session recorder and replayer written in C that allows you to capture and replay terminal sessions with precise timing.
 
 ## Features
 
