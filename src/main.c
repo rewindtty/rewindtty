@@ -46,14 +46,13 @@ int main(int argc, char *argv[])
 #endif
     }
 
-
     if (strcmp(argv[1], "record") == 0)
     {
         start_recording(session_file);
     }
     else if (strcmp(argv[1], "replay") == 0)
     {
-        start_replay(session_file);
+        replay_session_from_file(session_file, 1.0);
     }
     else
     {

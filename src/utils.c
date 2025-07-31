@@ -8,7 +8,6 @@
 #include <errno.h>
 #include <signal.h>
 
-#define BUF_SIZE 256
 
 char *read_file(const char *filename)
 {

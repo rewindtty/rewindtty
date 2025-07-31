@@ -14,41 +14,121 @@
 #include <errno.h>
 #include <signal.h>
 #include <sys/select.h>
+#include <sys/time.h>
 
-#define BUF_SIZE 256
+#define BUF_SIZE 8192
+#define MAX_CHUNKS_PER_COMMAND 1000
 
 static FILE *fp = NULL;
+static FILE *timing_fp = NULL;
 static int first = 1;
 static int child_running = 0;
 static pid_t current_child_pid = 0;
 
-int file_exists(const char *filename)
+typedef struct
 {
-    FILE *fp = fopen(filename, "r");
-    int is_exist = 0;
-    if (fp != NULL)
+    double timestamp;
+    size_t data_length;
+    char *data;
+} TTYChunk;
+
+typedef struct
+{
+    char command[1024];
+    double start_time;
+    double end_time;
+    TTYChunk *chunks;
+    size_t chunk_count;
+    size_t chunk_capacity;
+} TTYSession;
+
+double get_timestamp()
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + tv.tv_usec / 1000000.0;
+}
+
+TTYSession *create_tty_session(const char *command)
+{
+    TTYSession *session = malloc(sizeof(TTYSession));
+    strncpy(session->command, command, sizeof(session->command) - 1);
+    session->command[sizeof(session->command) - 1] = '\0';
+    session->start_time = get_timestamp();
+    session->end_time = 0;
+    session->chunks = malloc(sizeof(TTYChunk) * 100);
+    session->chunk_count = 0;
+    session->chunk_capacity = 100;
+    return session;
+}
+
+void add_chunk_to_session(TTYSession *session, double timestamp, const char *data, size_t length)
+{
+    if (session->chunk_count >= session->chunk_capacity)
     {
-        is_exist = 1;
-        fclose(fp);
+        session->chunk_capacity *= 2;
+        session->chunks = realloc(session->chunks, sizeof(TTYChunk) * session->chunk_capacity);
     }
-    return is_exist;
+
+    TTYChunk *chunk = &session->chunks[session->chunk_count];
+    chunk->timestamp = timestamp;
+    chunk->data_length = length;
+    chunk->data = malloc(length + 1);
+    memcpy(chunk->data, data, length);
+    chunk->data[length] = '\0';
+
+    session->chunk_count++;
 }
 
-void free_output(Output *out)
+void finish_tty_session(TTYSession *session)
 {
-    if (!out)
-        return;
-    if (out->stdout_buf)
-        free(out->stdout_buf);
-    if (out->stderr_buf)
-        free(out->stderr_buf);
-    out->stdout_buf = NULL;
-    out->stderr_buf = NULL;
-    out->stdout_size = 0;
-    out->stderr_size = 0;
+    session->end_time = get_timestamp();
 }
 
-Output exec_and_capture_pty(
+char *create_json_tty_session(TTYSession *session)
+{
+    cJSON *json_session = cJSON_CreateObject();
+    cJSON *json_chunks = cJSON_CreateArray();
+
+    cJSON_AddStringToObject(json_session, "command", session->command);
+    cJSON_AddNumberToObject(json_session, "start_time", session->start_time);
+    cJSON_AddNumberToObject(json_session, "end_time", session->end_time);
+    cJSON_AddNumberToObject(json_session, "duration", session->end_time - session->start_time);
+
+    for (size_t i = 0; i < session->chunk_count; i++)
+    {
+        cJSON *chunk = cJSON_CreateObject();
+        double relative_time = session->chunks[i].timestamp - session->start_time;
+
+        cJSON_AddNumberToObject(chunk, "time", relative_time);
+        cJSON_AddNumberToObject(chunk, "size", (double)session->chunks[i].data_length);
+        cJSON_AddStringToObject(chunk, "data", session->chunks[i].data);
+
+        cJSON_AddItemToArray(json_chunks, chunk);
+    }
+
+    cJSON_AddItemToObject(json_session, "chunks", json_chunks);
+
+    char *json_string = cJSON_Print(json_session);
+    cJSON_Delete(json_session);
+
+    return json_string;
+}
+
+void free_tty_session(TTYSession *session)
+{
+    if (!session)
+        return;
+
+    for (size_t i = 0; i < session->chunk_count; i++)
+    {
+        free(session->chunks[i].data);
+    }
+    free(session->chunks);
+    free(session);
+}
+
+TTYSession *exec_and_capture_pty_realtime(
     const char *command,
     const char *shell_path,
     int *child_running,
@@ -56,20 +136,22 @@ Output exec_and_capture_pty(
 {
     int master_fd;
     pid_t pid;
-    Output out = {NULL, 0, NULL, 0};
     struct termios term_attrs, raw_attrs;
+    TTYSession *session = create_tty_session(command);
 
     if (tcgetattr(STDIN_FILENO, &term_attrs) != 0)
     {
         perror("tcgetattr");
-        return out;
+        free_tty_session(session);
+        return NULL;
     }
 
     pid = forkpty(&master_fd, NULL, &term_attrs, NULL);
     if (pid == -1)
     {
         perror("forkpty");
-        return out;
+        free_tty_session(session);
+        return NULL;
     }
 
     *current_child_pid = pid;
@@ -77,6 +159,7 @@ Output exec_and_capture_pty(
 
     if (pid == 0)
     {
+        // Child process
         signal(SIGINT, SIG_DFL);
         signal(SIGTERM, SIG_DFL);
         signal(SIGHUP, SIG_DFL);
@@ -87,6 +170,7 @@ Output exec_and_capture_pty(
     }
     else
     {
+        // Parent process
         raw_attrs = term_attrs;
         cfmakeraw(&raw_attrs);
         tcsetattr(STDIN_FILENO, TCSANOW, &raw_attrs);
@@ -98,13 +182,17 @@ Output exec_and_capture_pty(
         int stdin_fd = STDIN_FILENO;
         int max_fd = (master_fd > stdin_fd) ? master_fd : stdin_fd;
 
+        // Set master_fd to non-blocking
+        int flags = fcntl(master_fd, F_GETFL);
+        fcntl(master_fd, F_SETFL, flags | O_NONBLOCK);
+
         while (*child_running)
         {
             FD_ZERO(&read_fds);
             FD_SET(master_fd, &read_fds);
             FD_SET(stdin_fd, &read_fds);
 
-            struct timeval timeout = {0, 10000};
+            struct timeval timeout = {0, 10000}; // 10ms timeout
             int select_result = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
 
             if (select_result > 0)
@@ -114,16 +202,13 @@ Output exec_and_capture_pty(
                     n = read(master_fd, buffer, BUF_SIZE - 1);
                     if (n > 0)
                     {
+                        double timestamp = get_timestamp();
+
+                        // Write to terminal for live view
                         write(STDOUT_FILENO, buffer, n);
 
-                        out.stdout_buf = realloc(out.stdout_buf, out.stdout_size + n + 1);
-                        if (!out.stdout_buf)
-                        {
-                            perror("realloc");
-                            break;
-                        }
-                        memcpy(out.stdout_buf + out.stdout_size, buffer, n);
-                        out.stdout_size += n;
+                        // Record the chunk with precise timing
+                        add_chunk_to_session(session, timestamp, buffer, n);
                     }
                     else if (n == 0)
                     {
@@ -149,6 +234,7 @@ Output exec_and_capture_pty(
                 }
             }
 
+            // Check if child has terminated
             if (waitpid(pid, &status, WNOHANG) > 0)
             {
                 *child_running = 0;
@@ -167,10 +253,8 @@ Output exec_and_capture_pty(
         *child_running = 0;
         *current_child_pid = 0;
 
-        if (out.stdout_buf)
-            out.stdout_buf[out.stdout_size] = '\0';
-
-        return out;
+        finish_tty_session(session);
+        return session;
     }
 }
 
@@ -192,50 +276,9 @@ void signal_handler(int signal)
         return;
     }
 
-    // Altrimenti gestisci normalmente
-    printf("\n[!] Signal received (%d), I will close session file...\n", signal);
+    printf("\n[!] Signal received (%d), closing session file...\n", signal);
     close_session_file();
-    _exit(1); // exit and avoid unsecure calls in signal handler
-}
-
-char *create_json_session_step(
-    time_t timestamp,
-    char command[1024],
-    char *stdout_str,
-    char *stderr_str)
-{
-    char *string = NULL;
-    cJSON *sessionStep = cJSON_CreateObject();
-
-    if (cJSON_AddNumberToObject(sessionStep, "timestamp", (long int)timestamp) == NULL)
-    {
-        goto exit_creation;
-    }
-
-    if (cJSON_AddStringToObject(sessionStep, "command", command) == NULL)
-    {
-        goto exit_creation;
-    }
-
-    if (cJSON_AddStringToObject(sessionStep, "output", stdout_str) == NULL)
-    {
-        goto exit_creation;
-    }
-
-    if (cJSON_AddStringToObject(sessionStep, "stderr", stderr_str) == NULL)
-    {
-        goto exit_creation;
-    }
-
-    string = cJSON_Print(sessionStep);
-    if (string == NULL)
-    {
-        fprintf(stderr, "Failed to create json string.\n");
-    }
-
-exit_creation:
-    cJSON_Delete(sessionStep);
-    return string;
+    _exit(1);
 }
 
 void start_recording(const char *filename)
@@ -250,13 +293,18 @@ void start_recording(const char *filename)
     if (!fp)
     {
         perror("fopen");
+        return;
     }
 
     fprintf(fp, "[\n");
     first = 1;
+
+    printf("TTY Real-time Recorder started. Type 'exit' to quit.\n");
+
     while (1)
     {
         printf("rewindtty> ");
+        fflush(stdout);
 
         if (!fgets(command, sizeof(command), stdin))
             break;
@@ -270,35 +318,30 @@ void start_recording(const char *filename)
         if (!shell_path)
             shell_path = "/bin/sh";
 
-        if (!file_exists(shell_path))
-        {
-            fprintf(stdout, "Shell identified does not exists (%s)", shell_path);
-            exit(1);
-        }
+        printf("Recording command: %s\n", command);
+        printf("Press Ctrl+C to interrupt the command, 'exit' to quit recording.\n");
 
-        Output out = exec_and_capture_pty(
+        TTYSession *session = exec_and_capture_pty_realtime(
             command,
             shell_path,
             &child_running,
             &current_child_pid);
 
-        time_t timestamp = time(NULL);
+        if (session)
+        {
+            if (!first)
+                fprintf(fp, ",\n");
+            first = 0;
 
-        if (!first)
-            fprintf(fp, ",\n");
-        first = 0;
+            char *json_session = create_json_tty_session(session);
+            fprintf(fp, "%s", json_session);
+            fflush(fp);
 
-        char *session_step = create_json_session_step(
-            timestamp,
-            command,
-            out.stdout_buf ? out.stdout_buf : "",
-            out.stderr_buf ? out.stderr_buf : "");
-
-        fprintf(fp, session_step);
-
-        free(session_step);
-        free_output(&out);
+            free(json_session);
+            free_tty_session(session);
+        }
     }
 
     close_session_file();
+    printf("Recording session saved to: %s\n", filename);
 }
