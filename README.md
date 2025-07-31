@@ -14,8 +14,7 @@ A terminal session recorder and replayer written in C that allows you to capture
 
 ## ⚠️ Disclaimer
 
-This is a hobby project created for fun and learning purposes. It's still in active development and may contain bugs or incomplete features. If you encounter any issues, please report them in the [Issues](https://github.com/AndreaDebernardi/rewindtty/issues) section. Contributions are welcome and encouraged!
-
+This is a hobby project created for fun and learning purposes. It's still in active development and may contain bugs or incomplete features. If you encounter any issues, please report them in the [Issues](https://github.com/debba/rewindtty/issues) section. Contributions are welcome and encouraged!
 
 ## Features
 
@@ -97,16 +96,19 @@ The `browser_player` directory contains an advanced web-based player for rewindt
 ### Usage
 
 1. Navigate to the browser_player directory:
+
    ```bash
    cd browser_player
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Start the development server:
+
    ```bash
    npm run dev
    ```
