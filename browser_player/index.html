@@ -2,65 +2,56 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>RewindTTY Web Player</title>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css"
-    />
-    <style>
-      body {
-        background: #1e1e1e;
-        color: #ddd;
-        font-family: monospace;
-        padding: 1em;
-      }
-      #cmd-title {
-        margin-bottom: 0.5em;
-        color: #00ffff;
-      }
-      #terminal {
-        height: 500px;
-        width: 100%;
-        border: 1px solid #555;
-      }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RewindTTY Advanced Player</title>
   </head>
   <body>
-    <div id="cmd-title"></div>
-    <div id="terminal"></div>
+    <div class="container">
+      <header class="header">
+        <h1>RewindTTY Player</h1>
+        <div class="file-controls">
+          <input type="file" id="file-input" accept=".json" style="display: none;">
+          <button id="load-file-btn" class="control-btn">📁 Load JSON</button>
+        </div>
+        <div class="session-info">
+          <span id="current-command">Loading...</span>
+          <span id="session-time">00:00 / 00:00</span>
+        </div>
+      </header>
 
-    <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.min.js"></script>
-    <script>
-      const term = new Terminal({
-        convertEol: true,
-        cursorBlink: true,
-        theme: {
-          background: "#1e1e1e",
-          foreground: "#cccccc",
-        },
-      });
+      <div class="terminal-container">
+        <div id="terminal"></div>
+      </div>
 
-      term.open(document.getElementById("terminal"));
+      <div class="controls">
+        <div class="playback-controls">
+          <button id="play-pause-btn" class="control-btn">
+            <span class="play-icon">▶</span>
+            <span class="pause-icon" style="display: none">⏸</span>
+          </button>
+          <button id="restart-btn" class="control-btn">⏮</button>
+          <button id="speed-btn" class="control-btn" data-speed="1">1x</button>
+        </div>
 
-      fetch("../data/session.json")
-        .then((res) => res.json())
-        .then((sessions) => {
-          sessions.forEach((session, i) => {
-            const baseTime = session.start_time * 1000;
+        <div class="timeline-container">
+          <div class="timeline" id="timeline">
+            <div class="timeline-progress" id="timeline-progress"></div>
+            <div class="timeline-commands" id="timeline-commands"></div>
+            <div class="timeline-scrubber" id="timeline-scrubber"></div>
+          </div>
+          <div class="bookmarks" id="bookmarks"></div>
+        </div>
 
-            session.chunks.forEach((chunk) => {
-              const delay =
-                chunk.time * 1000 +
-                (session.start_time - sessions[0].start_time) * 1000;
-              setTimeout(() => {
-                if (chunk === session.chunks[0]) {
-                  term.write(`rewindtty> ${session.command}\r\n`);
-                }
-                term.write(chunk.data);
-              }, delay);
-            });
-          });
-        });
-    </script>
+        <div class="bookmark-controls">
+          <button id="add-bookmark-btn" class="control-btn">
+            📖 Add Bookmark
+          </button>
+          <button id="clear-bookmarks-btn" class="control-btn">
+            🗑 Clear All
+          </button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
