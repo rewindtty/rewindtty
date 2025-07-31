@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>RewindTTY Web Player</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css"
+    />
+    <style>
+      body {
+        background: #1e1e1e;
+        color: #ddd;
+        font-family: monospace;
+        padding: 1em;
+      }
+      #cmd-title {
+        margin-bottom: 0.5em;
+        color: #00ffff;
+      }
+      #terminal {
+        height: 500px;
+        width: 100%;
+        border: 1px solid #555;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="cmd-title"></div>
+    <div id="terminal"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.min.js"></script>
+    <script>
+      const term = new Terminal({
+        convertEol: true,
+        cursorBlink: true,
+        theme: {
+          background: "#1e1e1e",
+          foreground: "#cccccc",
+        },
+      });
+
+      term.open(document.getElementById("terminal"));
+
+      fetch("../data/session.json")
+        .then((res) => res.json())
+        .then((sessions) => {
+          sessions.forEach((session, i) => {
+            const baseTime = session.start_time * 1000;
+
+            session.chunks.forEach((chunk) => {
+              const delay =
+                chunk.time * 1000 +
+                (session.start_time - sessions[0].start_time) * 1000;
+              setTimeout(() => {
+                if (chunk === session.chunks[0]) {
+                  term.write(`rewindtty> ${session.command}\r\n`);
+                }
+                term.write(chunk.data);
+              }, delay);
+            });
+          });
+        });
+    </script>
+  </body>
+</html>
