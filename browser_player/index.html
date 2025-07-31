@@ -6,33 +6,74 @@
     <title>RewindTTY Advanced Player</title>
   </head>
   <body>
+    <!-- JSON Selection Modal -->
+    <div id="json-modal" class="modal">
+      <div class="modal-content">
+        <h2 class="logo">
+          <img
+            src="/assets/logo.png"
+            alt="RewindTTY Player Logo"
+            style="height: 50px"
+          />
+          <span class="sr-only">Welcome to RewindTTY Player</span>
+        </h1>
+        <p>Please select a JSON file to start playing:</p>
+        <div class="modal-file-controls">
+          <input
+            type="file"
+            id="modal-file-input"
+            accept=".json"
+            style="display: none"
+          />
+          <button id="modal-load-file-btn" class="modal-btn">
+            📁 Choose JSON File
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="container">
       <header class="header">
-        <h1>RewindTTY Player</h1>
-        <div class="file-controls">
-          <input type="file" id="file-input" accept=".json" style="display: none;">
-          <button id="load-file-btn" class="control-btn">📁 Load JSON</button>
-        </div>
+        <h1 class="logo">
+          <img
+            src="/assets/logo.png"
+            alt="RewindTTY Player Logo"
+            style="height: 50px"
+          />
+          <span class="sr-only">RewindTTY Player</span>
+        </h1>
         <div class="session-info">
-          <span id="current-command">Loading...</span>
-          <span id="session-time">00:00 / 00:00</span>
+          <span id="current-command">No JSON loaded</span>
+          <button
+            id="command-list-btn"
+            class="control-btn"
+            title="Show command list"
+          >
+            📋
+          </button>
         </div>
       </header>
 
-      <div class="terminal-container">
-        <div id="terminal"></div>
+      <div class="main-content">
+        <div class="terminal-container">
+          <div id="terminal"></div>
+        </div>
+
+        <!-- Command List Sidebar -->
+        <div id="command-sidebar" class="command-sidebar">
+          <div class="sidebar-header">
+            <h3>Commands</h3>
+            <button id="close-sidebar-btn" class="close-btn">×</button>
+          </div>
+          <div class="sidebar-content">
+            <div id="command-list" class="command-list">
+              <!-- Commands will be populated here -->
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="controls">
-        <div class="playback-controls">
-          <button id="play-pause-btn" class="control-btn">
-            <span class="play-icon">▶</span>
-            <span class="pause-icon" style="display: none">⏸</span>
-          </button>
-          <button id="restart-btn" class="control-btn">⏮</button>
-          <button id="speed-btn" class="control-btn" data-speed="1">1x</button>
-        </div>
-
         <div class="timeline-container">
           <div class="timeline" id="timeline">
             <div class="timeline-progress" id="timeline-progress"></div>
@@ -42,13 +83,46 @@
           <div class="bookmarks" id="bookmarks"></div>
         </div>
 
-        <div class="bookmark-controls">
-          <button id="add-bookmark-btn" class="control-btn">
-            📖 Add Bookmark
-          </button>
-          <button id="clear-bookmarks-btn" class="control-btn">
-            🗑 Clear All
-          </button>
+        <div class="controls-bottom">
+          <div class="controls-left">
+            <button id="play-pause-btn" class="control-btn">
+              <span class="play-icon">▶</span>
+              <span class="pause-icon" style="display: none">⏸</span>
+            </button>
+            <button id="restart-btn" class="control-btn">⏮</button>
+            <button id="speed-btn" class="control-btn" data-speed="1">
+              1x
+            </button>
+            <span id="session-time">00:00 / 00:00</span>
+          </div>
+
+          <div class="controls-center">
+            <div class="file-controls">
+              <input
+                type="file"
+                id="file-input"
+                accept=".json"
+                style="display: none"
+              />
+              <button
+                id="load-file-btn"
+                class="control-btn"
+                style="display: none"
+              >
+                📁 Load JSON
+              </button>
+            </div>
+            <button id="add-bookmark-btn" class="control-btn">
+              📖 Add Bookmark
+            </button>
+            <button id="clear-bookmarks-btn" class="control-btn">
+              🗑 Clear All
+            </button>
+          </div>
+
+          <div class="controls-right">
+            <!-- Future controls can go here -->
+          </div>
         </div>
       </div>
     </div>

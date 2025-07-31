@@ -17,6 +17,8 @@ export class RewindTTYPlayer {
   private playbackTimer: number | null = null;
   private startTime: number = 0;
   private lastProcessedTime: number = 0;
+  private isDragging: boolean = false;
+  private wasPlayingBeforeDrag: boolean = false;
 
   private elements: {
     currentCommand: HTMLElement;
@@ -33,7 +35,18 @@ export class RewindTTYPlayer {
     clearBookmarksBtn: HTMLElement;
     fileInput: HTMLInputElement;
     loadFileBtn: HTMLElement;
+    modal: HTMLElement;
+    modalFileInput: HTMLInputElement;
+    modalLoadFileBtn: HTMLElement;
+    commandListBtn: HTMLElement;
+    commandSidebar: HTMLElement;
+    closeSidebarBtn: HTMLElement;
+    commandList: HTMLElement;
+    terminalContainer: HTMLElement;
+    tooltip: HTMLElement;
   };
+
+  private isJsonLoaded: boolean = false;
 
   constructor() {
     this.terminal = new Terminal({
@@ -78,7 +91,25 @@ export class RewindTTYPlayer {
       clearBookmarksBtn: document.getElementById("clear-bookmarks-btn")!,
       fileInput: document.getElementById("file-input") as HTMLInputElement,
       loadFileBtn: document.getElementById("load-file-btn")!,
+      modal: document.getElementById("json-modal")!,
+      modalFileInput: document.getElementById(
+        "modal-file-input"
+      ) as HTMLInputElement,
+      modalLoadFileBtn: document.getElementById("modal-load-file-btn")!,
+      commandListBtn: document.getElementById("command-list-btn")!,
+      commandSidebar: document.getElementById("command-sidebar")!,
+      closeSidebarBtn: document.getElementById("close-sidebar-btn")!,
+      commandList: document.getElementById("command-list")!,
+      terminalContainer: document.querySelector(".terminal-container")!,
+      tooltip: this.createTooltip(),
     };
+  }
+
+  private createTooltip(): HTMLElement {
+    const tooltip = document.createElement("div");
+    tooltip.className = "command-tooltip";
+    document.body.appendChild(tooltip);
+    return tooltip;
   }
 
   private setupEventListeners(): void {
@@ -87,8 +118,18 @@ export class RewindTTYPlayer {
     );
     this.elements.restartBtn.addEventListener("click", () => this.restart());
     this.elements.speedBtn.addEventListener("click", () => this.cycleSpeed());
-    this.elements.timeline.addEventListener("click", (e) =>
-      this.seekToPosition(e)
+    this.elements.timeline.addEventListener("click", (e) => {
+      if (!this.isDragging) {
+        this.seekToPosition(e);
+      }
+    });
+    
+    this.elements.timeline.addEventListener("mousedown", (e) =>
+      this.handleTimelineMouseDown(e)
+    );
+    
+    this.elements.timeline.addEventListener("wheel", (e) =>
+      this.handleTimelineWheel(e)
     );
     this.elements.addBookmarkBtn.addEventListener("click", () =>
       this.addBookmark()
@@ -102,10 +143,27 @@ export class RewindTTYPlayer {
     this.elements.fileInput.addEventListener("change", (e) =>
       this.handleFileLoad(e)
     );
+    this.elements.modalLoadFileBtn.addEventListener("click", () =>
+      this.elements.modalFileInput.click()
+    );
+    this.elements.modalFileInput.addEventListener("change", (e) =>
+      this.handleModalFileLoad(e)
+    );
+    this.elements.commandListBtn.addEventListener("click", () =>
+      this.toggleCommandSidebar()
+    );
+    this.elements.closeSidebarBtn.addEventListener("click", () =>
+      this.toggleCommandSidebar()
+    );
 
     window.addEventListener("resize", () => this.fitAddon.fit());
+    
+    window.addEventListener("mousemove", (e) => this.handleMouseMove(e));
+    window.addEventListener("mouseup", () => this.handleMouseUp());
 
     window.addEventListener("keydown", (e) => {
+      if (!this.isJsonLoaded) return;
+
       if (e.code === "Space") {
         e.preventDefault();
         this.togglePlayPause();
@@ -123,19 +181,68 @@ export class RewindTTYPlayer {
     this.terminal.open(document.getElementById("terminal")!);
     this.fitAddon.fit();
 
-    try {
-      const response = await fetch("../data/session.json");
-      if (response.ok) {
-        this.sessions = await response.json();
+    // Show modal on startup and disable controls
+    this.showModal();
+    this.disableControls();
+  }
+
+  private showModal(): void {
+    this.elements.modal.style.display = "flex";
+  }
+
+  private hideModal(): void {
+    this.elements.modal.style.display = "none";
+  }
+
+  private disableControls(): void {
+    this.elements.playPauseBtn.disabled = true;
+    this.elements.restartBtn.disabled = true;
+    this.elements.speedBtn.disabled = true;
+    this.elements.addBookmarkBtn.disabled = true;
+    this.elements.clearBookmarksBtn.disabled = true;
+    this.elements.commandListBtn.disabled = true;
+    this.elements.timeline.style.pointerEvents = "none";
+    this.elements.timeline.style.opacity = "0.5";
+  }
+
+  private enableControls(): void {
+    this.elements.playPauseBtn.disabled = false;
+    this.elements.restartBtn.disabled = false;
+    this.elements.speedBtn.disabled = false;
+    this.elements.addBookmarkBtn.disabled = false;
+    this.elements.clearBookmarksBtn.disabled = false;
+    this.elements.commandListBtn.disabled = false;
+    this.elements.timeline.style.pointerEvents = "auto";
+    this.elements.timeline.style.opacity = "1";
+    this.elements.loadFileBtn.style.display = "inline-block";
+  }
+
+  private handleModalFileLoad(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        this.sessions = JSON.parse(content);
         this.processSessionData();
-      } else {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        this.elements.currentCommand.textContent = `Loaded: ${file.name}`;
+        this.isJsonLoaded = true;
+        this.hideModal();
+        this.enableControls();
+        this.play();
+      } catch (error) {
+        console.error("Failed to parse JSON file:", error);
+        alert(
+          "Error: Invalid JSON file. Please select a valid RewindTTY JSON file."
+        );
       }
-    } catch (error) {
-      console.error("Failed to load default session data:", error);
-      this.elements.currentCommand.textContent =
-        "Click 'Load JSON' to load a session file";
-    }
+    };
+
+    reader.readAsText(file);
   }
 
   private handleFileLoad(event: Event): void {
@@ -167,7 +274,62 @@ export class RewindTTYPlayer {
     this.createTimelineCommands();
     this.renderTimelineCommands();
     this.renderBookmarks();
+    this.renderCommandList();
     this.updateUI();
+  }
+
+  private toggleCommandSidebar(): void {
+    const isOpen = this.elements.commandSidebar.classList.contains("open");
+
+    if (isOpen) {
+      this.elements.commandSidebar.classList.remove("open");
+      this.elements.terminalContainer.classList.remove("sidebar-open");
+    } else {
+      this.elements.commandSidebar.classList.add("open");
+      this.elements.terminalContainer.classList.add("sidebar-open");
+    }
+
+    // Resize terminal after animation
+    setTimeout(() => this.fitAddon.fit(), 300);
+  }
+
+  private renderCommandList(): void {
+    this.elements.commandList.innerHTML = "";
+
+    this.timelineCommands.forEach((cmd, index) => {
+      const commandItem = document.createElement("div");
+      commandItem.className = "command-item";
+
+      const commandText = document.createElement("div");
+      commandText.className = "command-text";
+      commandText.textContent = cmd.command;
+
+      const commandTime = document.createElement("div");
+      commandTime.className = "command-time";
+      commandTime.textContent = this.formatTime(cmd.startTime);
+
+      commandItem.appendChild(commandText);
+      commandItem.appendChild(commandTime);
+
+      commandItem.addEventListener("click", () => {
+        this.seekToTime(cmd.startTime);
+        this.updateActiveCommand(index);
+      });
+
+      this.elements.commandList.appendChild(commandItem);
+    });
+  }
+
+  private updateActiveCommand(activeIndex: number): void {
+    const commandItems =
+      this.elements.commandList.querySelectorAll(".command-item");
+    commandItems.forEach((item, index) => {
+      if (index === activeIndex) {
+        item.classList.add("active");
+      } else {
+        item.classList.remove("active");
+      }
+    });
   }
 
   private calculateTotalDuration(): void {
@@ -212,15 +374,27 @@ export class RewindTTYPlayer {
       marker.className = "command-marker";
       marker.style.left = `${cmd.position}%`;
       marker.setAttribute("data-command", cmd.command);
+
       marker.addEventListener("click", (e) => {
         e.stopPropagation();
         this.seekToTime(cmd.startTime);
       });
+
+      marker.addEventListener("mouseenter", (e) => {
+        this.showTooltip(e.target as HTMLElement, cmd.command);
+      });
+
+      marker.addEventListener("mouseleave", () => {
+        this.hideTooltip();
+      });
+
       this.elements.timelineCommands.appendChild(marker);
     });
   }
 
   private togglePlayPause(): void {
+    if (!this.isJsonLoaded) return;
+
     if (this.playbackState.isPlaying) {
       this.pause();
     } else {
@@ -314,9 +488,10 @@ export class RewindTTYPlayer {
       }
 
       // Start from current chunk index
-      const startChunkIndex = sessionIndex === this.playbackState.currentSessionIndex 
-        ? this.playbackState.currentChunkIndex 
-        : 0;
+      const startChunkIndex =
+        sessionIndex === this.playbackState.currentSessionIndex
+          ? this.playbackState.currentChunkIndex
+          : 0;
 
       for (
         let chunkIndex = startChunkIndex;
@@ -336,7 +511,7 @@ export class RewindTTYPlayer {
 
       // Move to next session
       cumulativeTime += session.duration * 1000;
-      
+
       // If we've processed all chunks in this session and still haven't reached target time,
       // continue to next session
       if (cumulativeTime <= targetTime) {
@@ -366,6 +541,8 @@ export class RewindTTYPlayer {
   }
 
   private addBookmark(): void {
+    if (!this.isJsonLoaded) return;
+
     const name = prompt("Enter bookmark name:");
     if (!name) return;
 
@@ -431,6 +608,7 @@ export class RewindTTYPlayer {
       this.sessions[this.playbackState.currentSessionIndex];
     if (currentSession) {
       this.elements.currentCommand.textContent = currentSession.command;
+      this.updateActiveCommand(this.playbackState.currentSessionIndex);
     }
 
     this.elements.sessionTime.textContent = `${this.formatTime(
@@ -460,6 +638,87 @@ export class RewindTTYPlayer {
         console.error("Failed to load bookmarks:", error);
         this.bookmarks = [];
       }
+    }
+  }
+
+  private showTooltip(element: HTMLElement, command: string): void {
+    this.elements.tooltip.textContent = command;
+    this.elements.tooltip.style.display = "block";
+    this.elements.tooltip.classList.add("visible");
+    
+    const rect = element.getBoundingClientRect();
+    
+    // Position tooltip above the marker
+    this.elements.tooltip.style.left = `${rect.left + rect.width / 2}px`;
+    this.elements.tooltip.style.top = `${rect.top - 8}px`;
+    this.elements.tooltip.style.transform = "translateX(-50%) translateY(-100%)";
+  }
+
+  private hideTooltip(): void {
+    this.elements.tooltip.style.display = "none";
+    this.elements.tooltip.classList.remove("visible");
+  }
+
+  private handleTimelineMouseDown(event: MouseEvent): void {
+    if (!this.isJsonLoaded || event.button !== 0) return; // Only handle left mouse button
+    
+    this.isDragging = true;
+    this.wasPlayingBeforeDrag = this.playbackState.isPlaying;
+    
+    if (this.playbackState.isPlaying) {
+      this.pause();
+    }
+    
+    this.seekToPosition(event);
+    event.preventDefault();
+  }
+
+  private handleMouseMove(event: MouseEvent): void {
+    if (!this.isDragging || !this.isJsonLoaded) return;
+    
+    const rect = this.elements.timeline.getBoundingClientRect();
+    if (event.clientX >= rect.left && event.clientX <= rect.right) {
+      this.seekToPosition(event);
+    }
+  }
+
+  private handleMouseUp(): void {
+    if (!this.isDragging) return;
+    
+    this.isDragging = false;
+    
+    if (this.wasPlayingBeforeDrag) {
+      this.play();
+    }
+  }
+
+  private handleTimelineWheel(event: WheelEvent): void {
+    if (!this.isJsonLoaded) return;
+    
+    event.preventDefault();
+    
+    const wasPlaying = this.playbackState.isPlaying;
+    if (wasPlaying) {
+      this.pause();
+    }
+    
+    // Calculate new time based on wheel delta
+    const wheelSensitivity = 1000; // milliseconds per wheel tick
+    const deltaTime = (event.deltaY > 0 ? -wheelSensitivity : wheelSensitivity);
+    const newTime = Math.max(0, Math.min(
+      this.playbackState.currentTime + deltaTime,
+      this.playbackState.totalDuration
+    ));
+    
+    this.seekToTime(newTime);
+    
+    if (wasPlaying) {
+      // Resume playing after a short delay
+      setTimeout(() => {
+        if (!this.isDragging) {
+          this.play();
+        }
+      }, 100);
     }
   }
 }
