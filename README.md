@@ -12,6 +12,11 @@ A terminal session recorder and replayer written in C that allows you to capture
   </picture>
 </p>
 
+## ⚠️ Disclaimer
+
+This is a hobby project created for fun and learning purposes. It's still in active development and may contain bugs or incomplete features. If you encounter any issues, please report them in the [Issues](https://github.com/AndreaDebernardi/rewindtty/issues) section. Contributions are welcome and encouraged!
+
+
 ## Features
 
 - **Record terminal sessions**: Capture all terminal input/output with accurate timing information
