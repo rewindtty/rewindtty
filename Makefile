@@ -6,7 +6,7 @@ CFLAGS += -Ilibs/cjson
 OBJ=src/main.o src/recorder.o src/replayer.o src/utils.o libs/cjson/cJSON.o
 OUT=build/rewindtty
 
-all: $(OUT)
+all: clean $(OUT)
 
 $(OUT): $(OBJ)
 	mkdir -p build

@@ -39,11 +39,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-#ifdef _WIN32
-        _mkdir("data");
-#else
         mkdir("data", 0755);
-#endif
     }
 
     if (strcmp(argv[1], "record") == 0)

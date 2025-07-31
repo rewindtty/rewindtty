@@ -3,3 +3,5 @@
 data
 *.o
 build
+browser_player/node_modules
+browser_player/dist
