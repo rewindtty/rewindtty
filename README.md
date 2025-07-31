@@ -19,6 +19,7 @@ A terminal session recorder and replayer written in C that allows you to capture
 - **JSON format**: Sessions are stored in a structured JSON format for easy parsing
 - **Signal handling**: Graceful shutdown and file closure on interruption
 - **Lightweight**: Minimal dependencies, written in pure C
+- **Web browser player**: Advanced browser-based player with interactive timeline and controls
 
 ## Building
 
@@ -74,6 +75,47 @@ Commands:
   replay [file]    Replay a recorded session from specified file (default: data/session.json)
 ```
 
+## Browser Player
+
+The `browser_player` directory contains an advanced web-based player for rewindtty sessions that provides enhanced features and a modern interface.
+
+### Features
+
+- **Interactive timeline**: Visual timeline with scrubbing support for easy navigation
+- **Command list**: Sidebar showing all executed commands with click-to-jump functionality
+- **Bookmarks**: Add and manage bookmarks at specific moments in the session
+- **Playback controls**: Play, pause, restart, and speed adjustment (1x, 2x, 4x, 8x)
+- **File loading**: Drag-and-drop or file picker support for JSON session files
+- **Real-time status**: Display current command and session timing information
+- **Modern UI**: Clean, responsive interface built with TypeScript and Vite
+
+### Usage
+
+1. Navigate to the browser_player directory:
+   ```bash
+   cd browser_player
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+4. Open your browser and load a JSON session file to start playing
+
+### Building for Production
+
+```bash
+npm run build
+```
+
+The browser player uses xterm.js for terminal emulation and provides a significantly enhanced experience compared to the basic command-line replay functionality.
+
 ## File Structure
 
 ```
@@ -86,11 +128,22 @@ rewindtty/
 │   ├── replayer.h      # Replay function declarations
 │   ├── utils.c         # Utility functions
 │   └── utils.h         # Utility function declarations
+├── browser_player/     # Web-based advanced player
+│   ├── src/
+│   │   ├── main.ts     # Entry point
+│   │   ├── player.ts   # Player implementation
+│   │   ├── types.ts    # TypeScript type definitions
+│   │   └── style.css   # Player styles
+│   ├── index.html      # HTML template
+│   ├── package.json    # Node.js dependencies
+│   └── tsconfig.json   # TypeScript configuration
 ├── data/
 │   └── session.json    # Default session storage file
 ├── build/              # Build output directory
 ├── assets/
 │   └── demo.gif        # Demo animation
+├── libs/
+│   └── cjson/          # JSON parsing library
 ├── LICENSE             # MIT License
 ├── Makefile           # Build configuration
 └── README.md          # This file

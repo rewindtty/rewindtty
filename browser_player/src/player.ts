@@ -23,24 +23,24 @@ export class RewindTTYPlayer {
   private elements: {
     currentCommand: HTMLElement;
     sessionTime: HTMLElement;
-    playPauseBtn: HTMLElement;
-    restartBtn: HTMLElement;
-    speedBtn: HTMLElement;
+    playPauseBtn: HTMLButtonElement;
+    restartBtn: HTMLButtonElement;
+    speedBtn: HTMLButtonElement;
     timeline: HTMLElement;
     timelineProgress: HTMLElement;
     timelineCommands: HTMLElement;
     timelineScrubber: HTMLElement;
     bookmarksContainer: HTMLElement;
-    addBookmarkBtn: HTMLElement;
-    clearBookmarksBtn: HTMLElement;
+    addBookmarkBtn: HTMLButtonElement;
+    clearBookmarksBtn: HTMLButtonElement;
     fileInput: HTMLInputElement;
-    loadFileBtn: HTMLElement;
+    loadFileBtn: HTMLButtonElement;
     modal: HTMLElement;
     modalFileInput: HTMLInputElement;
-    modalLoadFileBtn: HTMLElement;
-    commandListBtn: HTMLElement;
+    modalLoadFileBtn: HTMLButtonElement;
+    commandListBtn: HTMLButtonElement;
     commandSidebar: HTMLElement;
-    closeSidebarBtn: HTMLElement;
+    closeSidebarBtn: HTMLButtonElement;
     commandList: HTMLElement;
     terminalContainer: HTMLElement;
     tooltip: HTMLElement;
@@ -123,11 +123,11 @@ export class RewindTTYPlayer {
         this.seekToPosition(e);
       }
     });
-    
+
     this.elements.timeline.addEventListener("mousedown", (e) =>
       this.handleTimelineMouseDown(e)
     );
-    
+
     this.elements.timeline.addEventListener("wheel", (e) =>
       this.handleTimelineWheel(e)
     );
@@ -157,7 +157,7 @@ export class RewindTTYPlayer {
     );
 
     window.addEventListener("resize", () => this.fitAddon.fit());
-    
+
     window.addEventListener("mousemove", (e) => this.handleMouseMove(e));
     window.addEventListener("mouseup", () => this.handleMouseUp());
 
@@ -645,13 +645,14 @@ export class RewindTTYPlayer {
     this.elements.tooltip.textContent = command;
     this.elements.tooltip.style.display = "block";
     this.elements.tooltip.classList.add("visible");
-    
+
     const rect = element.getBoundingClientRect();
-    
+
     // Position tooltip above the marker
     this.elements.tooltip.style.left = `${rect.left + rect.width / 2}px`;
     this.elements.tooltip.style.top = `${rect.top - 8}px`;
-    this.elements.tooltip.style.transform = "translateX(-50%) translateY(-100%)";
+    this.elements.tooltip.style.transform =
+      "translateX(-50%) translateY(-100%)";
   }
 
   private hideTooltip(): void {
@@ -661,21 +662,21 @@ export class RewindTTYPlayer {
 
   private handleTimelineMouseDown(event: MouseEvent): void {
     if (!this.isJsonLoaded || event.button !== 0) return; // Only handle left mouse button
-    
+
     this.isDragging = true;
     this.wasPlayingBeforeDrag = this.playbackState.isPlaying;
-    
+
     if (this.playbackState.isPlaying) {
       this.pause();
     }
-    
+
     this.seekToPosition(event);
     event.preventDefault();
   }
 
   private handleMouseMove(event: MouseEvent): void {
     if (!this.isDragging || !this.isJsonLoaded) return;
-    
+
     const rect = this.elements.timeline.getBoundingClientRect();
     if (event.clientX >= rect.left && event.clientX <= rect.right) {
       this.seekToPosition(event);
@@ -684,9 +685,9 @@ export class RewindTTYPlayer {
 
   private handleMouseUp(): void {
     if (!this.isDragging) return;
-    
+
     this.isDragging = false;
-    
+
     if (this.wasPlayingBeforeDrag) {
       this.play();
     }
@@ -694,24 +695,27 @@ export class RewindTTYPlayer {
 
   private handleTimelineWheel(event: WheelEvent): void {
     if (!this.isJsonLoaded) return;
-    
+
     event.preventDefault();
-    
+
     const wasPlaying = this.playbackState.isPlaying;
     if (wasPlaying) {
       this.pause();
     }
-    
+
     // Calculate new time based on wheel delta
     const wheelSensitivity = 1000; // milliseconds per wheel tick
-    const deltaTime = (event.deltaY > 0 ? -wheelSensitivity : wheelSensitivity);
-    const newTime = Math.max(0, Math.min(
-      this.playbackState.currentTime + deltaTime,
-      this.playbackState.totalDuration
-    ));
-    
+    const deltaTime = event.deltaY > 0 ? -wheelSensitivity : wheelSensitivity;
+    const newTime = Math.max(
+      0,
+      Math.min(
+        this.playbackState.currentTime + deltaTime,
+        this.playbackState.totalDuration
+      )
+    );
+
     this.seekToTime(newTime);
-    
+
     if (wasPlaying) {
       // Resume playing after a short delay
       setTimeout(() => {
