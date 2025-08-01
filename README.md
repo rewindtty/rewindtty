@@ -20,6 +20,7 @@ This is a hobby project created for fun and learning purposes. It's still in act
 
 - **Record terminal sessions**: Capture all terminal input/output with accurate timing information
 - **Replay sessions**: Play back recorded sessions with original timing
+- **Session analysis**: Analyze recorded sessions with detailed statistics and insights
 - **JSON format**: Sessions are stored in a structured JSON format for easy parsing
 - **Signal handling**: Graceful shutdown and file closure on interruption
 - **Lightweight**: Minimal dependencies, written in pure C
@@ -85,14 +86,31 @@ To replay a previously recorded session:
 
 This will read the session file (defaults to `data/session.json` if no file is specified) and replay it with the original timing.
 
+### Analyzing a Session
+
+To analyze a recorded session and get detailed statistics:
+
+```bash
+./build/rewindtty analyze [file]
+```
+
+This will generate a comprehensive analysis report including:
+- Total commands executed and session duration
+- Average time per command
+- Most frequently used commands
+- Slowest commands
+- Commands that generated errors or warnings
+- Helpful suggestions for optimization
+
 ### Command Line Options
 
 ```
-Usage: rewindtty [record|replay] [file]
+Usage: rewindtty [record|replay|analyze] [file]
 
 Commands:
   record [file]    Start recording a new terminal session to specified file (default: data/session.json)
   replay [file]    Replay a recorded session from specified file (default: data/session.json)
+  analyze [file]   Analyze a recorded session and generate statistics report (default: data/session.json)
 ```
 
 ## Browser Player
@@ -149,6 +167,8 @@ rewindtty/
 │   ├── recorder.h      # Recording function declarations
 │   ├── replayer.c      # Session replay functionality
 │   ├── replayer.h      # Replay function declarations
+│   ├── analyzer.c      # Session analysis functionality
+│   ├── analyzer.h      # Analysis function declarations
 │   ├── utils.c         # Utility functions
 │   └── utils.h         # Utility function declarations
 ├── browser_player/     # Web-based advanced player

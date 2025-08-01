@@ -13,4 +13,5 @@ typedef struct
 } Output;
 
 char *read_file(const char *filename);
+char *to_lower(const char *str);
 #endif

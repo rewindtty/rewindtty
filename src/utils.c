@@ -7,35 +7,36 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <signal.h>
+#include <ctype.h>
 
+char *to_lower(const char *str)
+{
+    char *lower = strdup(str);
+    return lower;
+}
 
 char *read_file(const char *filename)
 {
-    FILE *fp = fopen(filename, "r");
-    if (!fp)
+    FILE *file = fopen(filename, "r");
+    if (!file)
     {
-        perror("fopen");
+        fprintf(stderr, "Error: Cannot open file '%s'\n", filename);
         return NULL;
     }
 
-    fseek(fp, 0, SEEK_END);
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    rewind(file);
 
-    long file_length = ftell(fp);
-    rewind(fp);
-
-    char *content = malloc(file_length + 1);
-
+    char *content = malloc(file_size + 1);
     if (!content)
     {
-        fclose(fp);
+        fclose(file);
         return NULL;
     }
 
-    fread(content, 1, file_length, fp);
-
-    content[file_length] = '\0';
-
-    fclose(fp);
-
+    fread(content, 1, file_size, file);
+    content[file_size] = '\0';
+    fclose(file);
     return content;
 }

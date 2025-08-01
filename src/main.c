@@ -3,6 +3,7 @@
 #include <string.h>
 #include "recorder.h"
 #include "replayer.h"
+#include "analyzer.h"
 #include <sys/stat.h>
 
 #define DEFAULT_SESSION_FILE "data/session.json"
@@ -18,7 +19,7 @@ int main(int argc, char *argv[])
 
     if (argc < 2)
     {
-        fprintf(stderr, "Usage: %s <record|replay> [session_file]\n", argv[0]);
+        fprintf(stderr, "Usage: %s <record|replay|analyze> [session_file]\n", argv[0]);
         return 1;
     }
 
@@ -33,26 +34,29 @@ int main(int argc, char *argv[])
 
     const char *session_file = DEFAULT_SESSION_FILE;
 
-    if (argc >= 3)
-    {
-        session_file = argv[2];
-    }
-    else
-    {
-        mkdir("data", 0755);
-    }
-
     if (strcmp(argv[1], "record") == 0)
     {
+        if (argc >= 3)
+        {
+            session_file = argv[2];
+        }
+        else
+        {
+            mkdir("data", 0755);
+        }
         start_recording(session_file);
     }
     else if (strcmp(argv[1], "replay") == 0)
     {
         replay_session_from_file(session_file, 1.0);
     }
+    else if (strcmp(argv[1], "analyze") == 0)
+    {
+        analyze_session(session_file);
+    }
     else
     {
-        fprintf(stderr, "Unknown command '%s'. Use 'record' or 'replay'\n", argv[1]);
+        fprintf(stderr, "Unknown command '%s'. Use 'record', 'replay', or 'analyze'\n", argv[1]);
         return 1;
     }
 
