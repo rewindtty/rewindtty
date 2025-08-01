@@ -32,6 +32,22 @@ This is a hobby project created for fun and learning purposes. It's still in act
 - GCC compiler
 - GNU Make
 - Standard C library with GNU extensions
+- Git (for cloning project and submodules)
+
+### Cloning the repository
+
+This project uses cJSON as a Git submodule.
+Make sure to clone with submodules:
+
+```bash
+git clone --recurse-submodules https://github.com/debba/rewindtty.git
+```
+
+If you already cloned the repository without submodules, run:
+
+```bash
+git submodule update --init --recursive
+```
 
 ### Compilation
 
