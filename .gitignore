@@ -1,6 +1,7 @@
 .vscode
 .idea
 data
+!data/.gitkeep
 *.o
 build
 browser_player/node_modules
