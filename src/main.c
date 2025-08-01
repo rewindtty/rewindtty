@@ -48,10 +48,18 @@ int main(int argc, char *argv[])
     }
     else if (strcmp(argv[1], "replay") == 0)
     {
+        if (argc >= 3)
+        {
+            session_file = argv[2];
+        }
         replay_session_from_file(session_file, 1.0);
     }
     else if (strcmp(argv[1], "analyze") == 0)
     {
+        if (argc >= 3)
+        {
+            session_file = argv[2];
+        }
         analyze_session(session_file);
     }
     else
