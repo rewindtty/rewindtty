@@ -34,16 +34,13 @@ int main(int argc, char *argv[])
 
     const char *session_file = DEFAULT_SESSION_FILE;
 
+    if (argc >= 3)
+    {
+        session_file = argv[2];
+    }
+
     if (strcmp(argv[1], "record") == 0)
     {
-        if (argc >= 3)
-        {
-            session_file = argv[2];
-        }
-        else
-        {
-            mkdir("data", 0755);
-        }
         start_recording(session_file);
     }
     else if (strcmp(argv[1], "replay") == 0)
