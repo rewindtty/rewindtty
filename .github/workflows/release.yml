@@ -14,23 +14,12 @@ jobs:
       with:
         submodules: recursive
         
-    - name: Install build dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc make
-        
     - name: Build rewindtty
       run: make
-      
-    - name: Generate SHA256 checksum
-      run: |
-        cd build
-        sha256sum rewindtty > rewindtty.sha256
         
     - name: Upload binary to release
       run: |
         gh release upload ${{ github.event.release.tag_name }} \
-          ./build/rewindtty#rewindtty-linux-x86_64 \
-          ./build/rewindtty.sha256#rewindtty-linux-x86_64.sha256
+          ./build/rewindtty#rewindtty-linux-x86_64
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
