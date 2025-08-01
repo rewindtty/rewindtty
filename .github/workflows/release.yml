@@ -1,0 +1,25 @@
+name: Build and Attach Release Assets
+
+on:
+  release:
+    types: [published, prereleased]
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        
+    - name: Build rewindtty
+      run: make
+        
+    - name: Upload binary to release
+      run: |
+        gh release upload ${{ github.event.release.tag_name }} \
+          ./build/rewindtty#rewindtty-linux-x86_64
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
