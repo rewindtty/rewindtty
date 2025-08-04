@@ -52,6 +52,38 @@ void setup_terminal_for_replay()
     tcsetattr(STDIN_FILENO, TCSANOW, &term);
 }
 
+// Checks if a sequence is a terminal query that should be filtered out
+int should_filter_sequence(const char *data, size_t len)
+{
+    if (len < 3) return 0;
+    
+    // Check for specific problematic patterns that cause artifacts
+    if (strstr(data, "\033[6n") != NULL) return 1;  // Device Status Report
+    if (strstr(data, "\033[5n") != NULL) return 1;  // Device Status Report
+    if (strstr(data, "\033[>c") != NULL) return 1;  // Device Attributes
+    if (strstr(data, "\033[c") != NULL) return 1;   // Device Attributes (alternate)
+    if (strstr(data, "\033]10;?") != NULL) return 1; // Foreground color query
+    if (strstr(data, "\033]11;?") != NULL) return 1; // Background color query
+    if (strstr(data, "\033]12;?") != NULL) return 1; // Cursor color query
+    if (strstr(data, "\033Pzz") != NULL) return 1;   // DCS queries
+    if (strstr(data, "\033P+q") != NULL) return 1;   // DCS queries
+    if (strstr(data, "\033[?12$p") != NULL) return 1; // Bracketed paste query
+    
+    // Also filter common terminal response patterns that could appear
+    if (strstr(data, "rgb:") != NULL) return 1;      // Color response
+    if (len > 10 && data[0] >= '0' && data[0] <= '9') {
+        // Likely numeric response to device query
+        int semicolons = 0;
+        for (size_t i = 0; i < len && i < 20; i++) {
+            if (data[i] == ';') semicolons++;
+            if (data[i] == 'c' && semicolons > 0) return 1; // Device attributes response
+            if (data[i] == 'R' && semicolons > 0) return 1; // Cursor position response
+        }
+    }
+    
+    return 0;
+}
+
 // Converts escaped literals (e.g., \u001b) into actual escape characters
 char *decode_escaped_sequences(const char *input)
 {
@@ -200,7 +232,7 @@ void replay_session_from_file(const char *filename, double speed_multiplier)
     }
 
     cJSON *sessions = NULL;
-    
+
     // Check if this is the new format with metadata
     if (cJSON_IsObject(json))
     {
@@ -213,7 +245,7 @@ void replay_session_from_file(const char *filename, double speed_multiplier)
                 printf(COLOR_YELLOW "Info: Playing back interactive mode session\n" COLOR_RESET);
             }
         }
-        
+
         sessions = cJSON_GetObjectItem(json, "sessions");
         if (!sessions || !cJSON_IsArray(sessions))
         {
@@ -323,15 +355,20 @@ void replay_session_from_file(const char *filename, double speed_multiplier)
             {
                 processed_data = strdup(data);
             }
-            // Print processing chunk
+            
+            // Check if this chunk contains terminal queries that should be filtered
             size_t data_len = strlen(processed_data);
-            ssize_t written = write(STDOUT_FILENO, processed_data, data_len);
-            if (written != (ssize_t)data_len)
+            if (!should_filter_sequence(processed_data, data_len))
             {
-                // Fallback to printf if write fails
-                printf("%s", processed_data);
+                // Print processing chunk only if not filtered
+                ssize_t written = write(STDOUT_FILENO, processed_data, data_len);
+                if (written != (ssize_t)data_len)
+                {
+                    // Fallback to printf if write fails
+                    printf("%s", processed_data);
+                }
+                fflush(stdout);
             }
-            fflush(stdout);
 
             free(processed_data);
             last_time = chunk_time;
