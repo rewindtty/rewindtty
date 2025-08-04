@@ -16,10 +16,11 @@ jobs:
         
     - name: Build rewindtty
       run: make
-        
+    - name: Rename binary for Linux
+      run: mv ./build/rewindtty ./build/rewindtty-linux-x64
     - name: Upload binary to release
       run: |
         gh release upload ${{ github.event.release.tag_name }} \
-          ./build/rewindtty#rewindtty-linux-x86_64
+          ./build/rewindtty-linux-x64
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
