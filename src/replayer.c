@@ -187,8 +187,8 @@ void replay_session_from_file(const char *filename, double speed_multiplier)
         return;
     }
 
-    cJSON *sessions = cJSON_Parse(content);
-    if (sessions == NULL)
+    cJSON *json = cJSON_Parse(content);
+    if (json == NULL)
     {
         const char *error_ptr = cJSON_GetErrorPtr();
         if (error_ptr != NULL)
@@ -199,10 +199,39 @@ void replay_session_from_file(const char *filename, double speed_multiplier)
         return;
     }
 
-    if (!cJSON_IsArray(sessions))
+    cJSON *sessions = NULL;
+    
+    // Check if this is the new format with metadata
+    if (cJSON_IsObject(json))
     {
-        fprintf(stderr, "Invalid JSON format: expected array\n");
-        cJSON_Delete(sessions);
+        cJSON *metadata = cJSON_GetObjectItem(json, "metadata");
+        if (metadata && cJSON_IsObject(metadata))
+        {
+            cJSON *interactive_mode = cJSON_GetObjectItem(metadata, "interactive_mode");
+            if (interactive_mode && cJSON_IsBool(interactive_mode) && cJSON_IsTrue(interactive_mode))
+            {
+                printf(COLOR_YELLOW "Info: Playing back interactive mode session\n" COLOR_RESET);
+            }
+        }
+        
+        sessions = cJSON_GetObjectItem(json, "sessions");
+        if (!sessions || !cJSON_IsArray(sessions))
+        {
+            fprintf(stderr, "Invalid JSON format: expected 'sessions' array\n");
+            cJSON_Delete(json);
+            free(content);
+            return;
+        }
+    }
+    else if (cJSON_IsArray(json))
+    {
+        // Legacy format - treat the entire JSON as sessions array
+        sessions = json;
+    }
+    else
+    {
+        fprintf(stderr, "Invalid JSON format: expected array or metadata object\n");
+        cJSON_Delete(json);
         free(content);
         return;
     }
@@ -325,6 +354,6 @@ void replay_session_from_file(const char *filename, double speed_multiplier)
         printf(COLOR_CYAN "=== REPLAY COMPLETED ===" COLOR_RESET "\n");
     }
 
-    cJSON_Delete(sessions);
+    cJSON_Delete(json);
     free(content);
 }

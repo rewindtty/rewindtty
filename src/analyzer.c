@@ -129,16 +129,48 @@ void analyze_session(const char *session_file)
         return;
     }
 
-    if (!cJSON_IsArray(json))
+    cJSON *sessions_array = NULL;
+    
+    // Check if this is the new format with metadata
+    if (cJSON_IsObject(json))
     {
-        fprintf(stderr, "Error: Session file should contain an array of commands\n");
+        cJSON *metadata = cJSON_GetObjectItem(json, "metadata");
+        if (metadata && cJSON_IsObject(metadata))
+        {
+            cJSON *interactive_mode = cJSON_GetObjectItem(metadata, "interactive_mode");
+            if (interactive_mode && cJSON_IsBool(interactive_mode) && cJSON_IsTrue(interactive_mode))
+            {
+                fprintf(stderr, "Error: Analyze is currently unavailable in interactive mode\n");
+                cJSON_Delete(json);
+                free(json_string);
+                return;
+            }
+        }
+        
+        sessions_array = cJSON_GetObjectItem(json, "sessions");
+        if (!sessions_array || !cJSON_IsArray(sessions_array))
+        {
+            fprintf(stderr, "Error: Session file should contain a 'sessions' array\n");
+            cJSON_Delete(json);
+            free(json_string);
+            return;
+        }
+    }
+    else if (cJSON_IsArray(json))
+    {
+        // Legacy format - treat the entire JSON as sessions array
+        sessions_array = json;
+    }
+    else
+    {
+        fprintf(stderr, "Error: Session file should contain an array of commands or a metadata object\n");
         cJSON_Delete(json);
         free(json_string);
         return;
     }
 
     SessionAnalysis analysis = {0};
-    int array_size = cJSON_GetArraySize(json);
+    int array_size = cJSON_GetArraySize(sessions_array);
     analysis.total_commands = array_size;
     analysis.commands = malloc(array_size * sizeof(CommandInfo));
 
@@ -148,7 +180,7 @@ void analyze_session(const char *session_file)
 
     for (int i = 0; i < array_size; i++)
     {
-        cJSON *command_obj = cJSON_GetArrayItem(json, i);
+        cJSON *command_obj = cJSON_GetArrayItem(sessions_array, i);
         if (!command_obj)
             continue;
 
