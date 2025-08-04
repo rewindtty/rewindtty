@@ -26,6 +26,26 @@ This is a hobby project created for fun and learning purposes. It's still in act
 - **Lightweight**: Minimal dependencies, written in pure C
 - **Web browser player**: Advanced browser-based player with interactive timeline and controls
 
+## Interactive Mode ⚠️ Experimental
+
+rewindtty now supports an **interactive mode** that provides a script-like experience similar to `script` and `scriptreplay` utilities. This mode allows you to record and replay terminal sessions in real-time with enhanced interactivity.
+
+**Note**: This feature is currently experimental and may have limitations or bugs.
+
+### Interactive vs Legacy Mode Comparison
+
+| Feature | Interactive Mode | Legacy Mode |
+|---------|------------------|-------------|
+| **Recording Style** | Real-time shell interaction | Command-by-command capture |
+| **Replay Experience** | Live terminal emulation (like scriptreplay) | Step-by-step command replay |
+| **Session Analysis** | ❌ Not available* | ✅ Full analysis with statistics |
+| **File Format** | Enhanced JSON with timing data | Standard JSON format |
+| **Browser Player** | ✅ Compatible | ✅ Compatible |
+| **Performance** | Higher memory usage | Lightweight |
+| **Use Case** | Full session recording/replay | Command analysis and optimization |
+
+*The analyze tool is not available in interactive mode because commands cannot be reliably stored and parsed from the raw shell interaction data.
+
 ## Building
 
 ### Prerequisites
@@ -71,7 +91,7 @@ make clean
 To start recording a terminal session:
 
 ```bash
-./build/rewindtty record [file]
+./build/rewindtty record [--interactive] [file]
 ```
 
 This will create a new session file (defaults to `data/session.json` if no file is specified) and begin capturing all terminal activity.
