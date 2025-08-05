@@ -137,7 +137,8 @@ Commands:
 ## Browser Player
 
 For an advanced web-based player with enhanced features and a modern interface, visit: https://github.com/rewindtty/browser_player
-If you want try the player you can visit: https://play.rewindtty.dev
+
+You can try the player here: https://play.rewindtty.dev
 
 ## File Structure
 
