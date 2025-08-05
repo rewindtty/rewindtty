@@ -1,6 +1,6 @@
 <p align="center">
   <picture>
-    <img style="max-width:400px;height:auto"  src="assets/logo.png" alt="rewindtty logo">
+    <img style="max-width:400px;height:auto"  src="https://www.rewindtty.dev/assets/logo-black.png" alt="rewindtty logo">
   </picture>
 </p>
 
@@ -8,7 +8,7 @@ A terminal session recorder and replayer written in C that allows you to capture
 
 <p align="center">
   <picture>
-    <img src="assets/demo.gif" alt="rewindtty demo">
+    <img src="https://rewindtty.dev/assets/demo.gif" alt="rewindtty demo">
   </picture>
 </p>
 
@@ -34,17 +34,17 @@ rewindtty now supports an **interactive mode** that provides a script-like exper
 
 ### Interactive vs Legacy Mode Comparison
 
-| Feature | Interactive Mode | Legacy Mode |
-|---------|------------------|-------------|
-| **Recording Style** | Real-time shell interaction | Command-by-command capture |
-| **Replay Experience** | Live terminal emulation (like scriptreplay) | Step-by-step command replay |
-| **Session Analysis** | ❌ Not available* | ✅ Full analysis with statistics |
-| **File Format** | Enhanced JSON with timing data | Standard JSON format |
-| **Browser Player** | ✅ Compatible | ✅ Compatible |
-| **Performance** | Higher memory usage | Lightweight |
-| **Use Case** | Full session recording/replay | Command analysis and optimization |
+| Feature               | Interactive Mode                            | Legacy Mode                       |
+| --------------------- | ------------------------------------------- | --------------------------------- |
+| **Recording Style**   | Real-time shell interaction                 | Command-by-command capture        |
+| **Replay Experience** | Live terminal emulation (like scriptreplay) | Step-by-step command replay       |
+| **Session Analysis**  | ❌ Not available\*                          | ✅ Full analysis with statistics  |
+| **File Format**       | Enhanced JSON with timing data              | Standard JSON format              |
+| **Browser Player**    | ✅ Compatible                               | ✅ Compatible                     |
+| **Performance**       | Higher memory usage                         | Lightweight                       |
+| **Use Case**          | Full session recording/replay               | Command analysis and optimization |
 
-*The analyze tool is not available in interactive mode because commands cannot be reliably stored and parsed from the raw shell interaction data.
+\*The analyze tool is not available in interactive mode because commands cannot be reliably stored and parsed from the raw shell interaction data.
 
 ## Building
 
@@ -115,6 +115,7 @@ To analyze a recorded session and get detailed statistics:
 ```
 
 This will generate a comprehensive analysis report including:
+
 - Total commands executed and session duration
 - Average time per command
 - Most frequently used commands
