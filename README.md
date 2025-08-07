@@ -1,6 +1,6 @@
 <p align="center">
   <picture>
-    <img style="max-width:400px;height:auto"  src="https://www.rewindtty.dev/assets/logo-black.png" alt="rewindtty logo">
+    <img style="max-width:400px;height:auto"  src="https://www.rewindtty.dev/assets/images/logo-black.png" alt="rewindtty logo">
   </picture>
 </p>
 
@@ -8,7 +8,7 @@ A terminal session recorder and replayer written in C that allows you to capture
 
 <p align="center">
   <picture>
-    <img src="https://rewindtty.dev/assets/demo.gif" alt="rewindtty demo">
+    <img src="https://rewindtty.dev/assets/images/demo.gif" alt="rewindtty demo">
   </picture>
 </p>
 
