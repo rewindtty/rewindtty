@@ -8,7 +8,7 @@ A terminal session recorder and replayer written in C that allows you to capture
 
 <p align="center">
   <picture>
-    <img src="https://rewindtty.dev/assets/images/demo.gif" alt="rewindtty demo">
+    <img src="https://rewindtty.dev/assets/images/record.gif" alt="rewindtty demo">
   </picture>
 </p>
 
