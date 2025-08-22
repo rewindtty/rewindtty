@@ -25,6 +25,7 @@ This is a hobby project created for fun and learning purposes. It's still in act
 - **Signal handling**: Graceful shutdown and file closure on interruption
 - **Lightweight**: Minimal dependencies, written in pure C
 - **Web browser player**: Advanced browser-based player available at https://github.com/rewindtty/browser_player
+- **Upload to cloud**: Upload sessions to remote servers for sharing and collaboration
 
 ## Interactive Mode ⚠️ Experimental
 
@@ -96,6 +97,16 @@ To start recording a terminal session:
 
 This will create a new session file (defaults to `data/session.json` if no file is specified) and begin capturing all terminal activity.
 
+### Uploading a Session
+
+To upload a recorded session to a remote server:
+
+```bash
+./build/rewindtty upload [file] [url]
+```
+
+This will upload the session file (defaults to `data/session.json` if no file is specified) to the specified URL (defaults to the configured upload server). After a successful upload, you'll receive a link to view the session in the browser player.
+
 ### Replaying a Session
 
 To replay a previously recorded session:
@@ -126,12 +137,13 @@ This will generate a comprehensive analysis report including:
 ### Command Line Options
 
 ```
-Usage: rewindtty [record|replay|analyze] [file]
+Usage: rewindtty [record|replay|analyze|upload] [file] [url]
 
 Commands:
-  record [file]    Start recording a new terminal session to specified file (default: data/session.json)
-  replay [file]    Replay a recorded session from specified file (default: data/session.json)
-  analyze [file]   Analyze a recorded session and generate statistics report (default: data/session.json)
+  record [file]      Start recording a new terminal session to specified file (default: data/session.json)
+  replay [file]      Replay a recorded session from specified file (default: data/session.json)
+  analyze [file]     Analyze a recorded session and generate statistics report (default: data/session.json)
+  upload [file] [url] Upload a recorded session to a remote server (default file: data/session.json)
 ```
 
 ## Browser Player
@@ -152,6 +164,9 @@ rewindtty/
 │   ├── replayer.h      # Replay function declarations
 │   ├── analyzer.c      # Session analysis functionality
 │   ├── analyzer.h      # Analysis function declarations
+│   ├── uploader.c      # Session upload functionality
+│   ├── uploader.h      # Upload function declarations
+│   ├── consts.h        # Constants and configuration
 │   ├── utils.c         # Utility functions
 │   └── utils.h         # Utility function declarations
 ├── data/
@@ -159,6 +174,8 @@ rewindtty/
 ├── build/              # Build output directory
 ├── assets/
 │   └── demo.gif        # Demo animation
+├── docs/
+│   └── upload-server.md # Upload server implementation guide
 ├── libs/
 │   └── cjson/          # JSON parsing library
 ├── LICENSE             # MIT License
@@ -169,6 +186,16 @@ rewindtty/
 ## Session File Format
 
 Sessions are stored in JSON format in the `data/session.json` file. The format captures timing information and terminal data to enable accurate replay.
+
+## Upload Server
+
+For information on how to implement a server to receive uploaded sessions, see the [Upload Server Implementation Guide](docs/upload-server.md).
+
+The default upload server endpoints are:
+- Upload: `https://upload.rewindtty.dev/upload`
+- Player: `https://play.rewindtty.dev`
+
+These can be customized by modifying the constants in `src/consts.h`.
 
 ## Signal Handling
 

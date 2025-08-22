@@ -1,4 +1,5 @@
 #include "recorder.h"
+#include "uploader.h"
 #include "utils.h"
 #include "cJSON.h"
 #include <stdio.h>
@@ -137,6 +138,11 @@ void add_session_to_data(SessionData *data, TTYSession *session)
 
 void write_sessions_to_file(const char *filename, SessionData *data)
 {
+    write_sessions_to_file_with_upload(filename, data, 0, NULL);
+}
+
+void write_sessions_to_file_with_upload(const char *filename, SessionData *data, int upload_enabled, const char *upload_url)
+{
     cJSON *root = cJSON_CreateObject();
 
     // Create metadata
@@ -176,19 +182,33 @@ void write_sessions_to_file(const char *filename, SessionData *data)
     }
     cJSON_AddItemToObject(root, "sessions", sessions_array);
 
+    char *json_string = cJSON_Print(root);
+
     // Write to file
     FILE *file = fopen(filename, "w");
-    if (file)
+    if (file && json_string)
     {
-        char *json_string = cJSON_Print(root);
-        if (json_string)
-        {
-            fprintf(file, "%s\n", json_string);
-            free(json_string);
-        }
+        fprintf(file, "%s\n", json_string);
         fclose(file);
     }
 
+    // Upload if enabled
+    if (upload_enabled && upload_url && json_string)
+    {
+        if (upload_session_data(json_string, upload_url))
+        {
+            printf("Session uploaded successfully!\n");
+        }
+        else
+        {
+            printf("Failed to upload session data.\n");
+        }
+    }
+
+    if (json_string)
+    {
+        free(json_string);
+    }
     cJSON_Delete(root);
 }
 
@@ -441,6 +461,11 @@ void clean_command_string(char *cmd)
 
 void start_interactive_recording(const char *filename)
 {
+    start_interactive_recording_with_upload(filename, 0, NULL);
+}
+
+void start_interactive_recording_with_upload(const char *filename, int upload_enabled, const char *upload_url)
+{
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
     signal(SIGHUP, signal_handler);
@@ -645,8 +670,8 @@ void start_interactive_recording(const char *filename)
         free_input_buffer(output_buf);
     }
 
-    // Write final JSON file
-    write_sessions_to_file(filename, global_session_data);
+    // Write final JSON file with optional upload
+    write_sessions_to_file_with_upload(filename, global_session_data, upload_enabled, upload_url);
     free_session_data(global_session_data);
     global_session_data = NULL;
 
@@ -660,6 +685,11 @@ void start_interactive_recording(const char *filename)
 }
 
 void start_recording(const char *filename)
+{
+    start_recording_with_upload(filename, 0, NULL);
+}
+
+void start_recording_with_upload(const char *filename, int upload_enabled, const char *upload_url)
 {
     char command[1024];
 
@@ -705,8 +735,8 @@ void start_recording(const char *filename)
         }
     }
 
-    // Write final JSON file
-    write_sessions_to_file(filename, global_session_data);
+    // Write final JSON file with optional upload
+    write_sessions_to_file_with_upload(filename, global_session_data, upload_enabled, upload_url);
     free_session_data(global_session_data);
     global_session_data = NULL;
 

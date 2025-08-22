@@ -1,27 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "consts.h"
 #include "recorder.h"
 #include "replayer.h"
 #include "analyzer.h"
+#include "uploader.h"
 #include <sys/stat.h>
-
-#define DEFAULT_SESSION_FILE "data/session.json"
-
-#include <stdio.h>
-
-#ifndef REWINDTTY_VERSION
-#define REWINDTTY_VERSION "dev"
-#endif
 
 int main(int argc, char *argv[])
 {
 
     if (argc < 2)
     {
-        fprintf(stderr, "Usage: %s <record|replay|analyze> [options] [session_file]\n", argv[0]);
+        fprintf(stderr, "Usage: %s <record|replay|analyze|upload> [options] [session_file]\n", argv[0]);
         fprintf(stderr, "Options for record:\n");
         fprintf(stderr, "  --interactive    Record in interactive mode (script-like behavior)\n");
+        fprintf(stderr, "  --upload         Upload recorded session to " UPLOAD_URL "\n");
+        fprintf(stderr, "Commands:\n");
+        fprintf(stderr, "  upload           Upload existing session file to " UPLOAD_URL "\n");
         return 1;
     }
 
@@ -36,15 +33,31 @@ int main(int argc, char *argv[])
 
     const char *session_file = DEFAULT_SESSION_FILE;
     int interactive_mode = 0;
+    int upload_enabled = 0;
+    const char *upload_url = UPLOAD_URL;
     int arg_index = 2;
 
     // Parse flags for record command
     if (strcmp(argv[1], "record") == 0 && argc > 2)
     {
-        if (strcmp(argv[2], "--interactive") == 0)
+        for (int i = 2; i < argc; i++)
         {
-            interactive_mode = 1;
-            arg_index = 3;
+            if (strcmp(argv[i], "--interactive") == 0)
+            {
+                interactive_mode = 1;
+                arg_index = i + 1;
+            }
+            else if (strcmp(argv[i], "--upload") == 0)
+            {
+                upload_enabled = 1;
+                arg_index = i + 1;
+            }
+            else if (argv[i][0] != '-')
+            {
+                // This is the session file
+                session_file = argv[i];
+                break;
+            }
         }
     }
 
@@ -57,11 +70,11 @@ int main(int argc, char *argv[])
     {
         if (interactive_mode)
         {
-            start_interactive_recording(session_file);
+            start_interactive_recording_with_upload(session_file, upload_enabled, upload_url);
         }
         else
         {
-            start_recording(session_file);
+            start_recording_with_upload(session_file, upload_enabled, upload_url);
         }
     }
     else if (strcmp(argv[1], "replay") == 0)
@@ -72,9 +85,22 @@ int main(int argc, char *argv[])
     {
         analyze_session(session_file);
     }
+    else if (strcmp(argv[1], "upload") == 0)
+    {
+        printf("Uploading session file: %s\n", session_file);
+        if (upload_session_file(session_file, upload_url))
+        {
+            printf("Upload completed successfully!\n");
+        }
+        else
+        {
+            printf("Upload failed.\n");
+            return 1;
+        }
+    }
     else
     {
-        fprintf(stderr, "Unknown command '%s'. Use 'record', 'replay', or 'analyze'\n", argv[1]);
+        fprintf(stderr, "Unknown command '%s'. Use 'record', 'replay', 'analyze', or 'upload'\n", argv[1]);
         return 1;
     }
 

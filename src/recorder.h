@@ -52,7 +52,11 @@ void finish_tty_session(TTYSession *session);
 void free_tty_session(TTYSession *session);
 void signal_handler(int signal);
 void start_recording(const char *filename);
+void start_recording_with_upload(const char *filename, int upload_enabled, const char *upload_url);
 void start_interactive_recording(const char *filename);
+void start_interactive_recording_with_upload(const char *filename, int upload_enabled, const char *upload_url);
+void write_sessions_to_file(const char *filename, SessionData *data);
+void write_sessions_to_file_with_upload(const char *filename, SessionData *data, int upload_enabled, const char *upload_url);
 char *create_json_session_step(
     time_t timestamp,
     char command[1024],
