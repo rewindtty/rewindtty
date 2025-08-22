@@ -177,6 +177,45 @@ int upload_session_file(const char *filename, const char *upload_url)
     json_data[read_size] = '\0';
     fclose(file);
 
+    // Validate JSON structure
+    cJSON *json = cJSON_Parse(json_data);
+    if (!json)
+    {
+        printf("Error: Invalid JSON format in file %s\n", filename);
+        free(json_data);
+        return 0;
+    }
+
+    // Check for required fields
+    cJSON *metadata = cJSON_GetObjectItemCaseSensitive(json, "metadata");
+    cJSON *sessions = cJSON_GetObjectItemCaseSensitive(json, "sessions");
+
+    if (!metadata)
+    {
+        printf("Error: Missing 'metadata' field in JSON\n");
+        cJSON_Delete(json);
+        free(json_data);
+        return 0;
+    }
+
+    if (!sessions)
+    {
+        printf("Error: Missing 'sessions' field in JSON\n");
+        cJSON_Delete(json);
+        free(json_data);
+        return 0;
+    }
+
+    if (!cJSON_IsArray(sessions))
+    {
+        printf("Error: 'sessions' field must be an array\n");
+        cJSON_Delete(json);
+        free(json_data);
+        return 0;
+    }
+
+    cJSON_Delete(json);
+
     int result = upload_session_data(json_data, upload_url);
 
     free(json_data);

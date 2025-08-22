@@ -102,10 +102,11 @@ This will create a new session file (defaults to `data/session.json` if no file 
 To upload a recorded session to a remote server:
 
 ```bash
-./build/rewindtty upload [file] [url]
+./build/rewindtty upload [file]
 ```
 
-This will upload the session file (defaults to `data/session.json` if no file is specified) to the specified URL (defaults to the configured upload server). After a successful upload, you'll receive a link to view the session in the browser player.
+This will upload the session file (defaults to `data/session.json` if no file is specified) to the configured upload server.
+After a successful upload, you'll receive a link to view the session in the browser player.
 
 ### Replaying a Session
 
@@ -192,6 +193,7 @@ Sessions are stored in JSON format in the `data/session.json` file. The format c
 For information on how to implement a server to receive uploaded sessions, see the [Upload Server Implementation Guide](docs/upload-server.md).
 
 The default upload server endpoints are:
+
 - Upload: `https://upload.rewindtty.dev/upload`
 - Player: `https://play.rewindtty.dev`
 

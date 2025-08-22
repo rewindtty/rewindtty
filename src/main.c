@@ -88,6 +88,7 @@ int main(int argc, char *argv[])
     else if (strcmp(argv[1], "upload") == 0)
     {
         printf("Uploading session file: %s\n", session_file);
+        printf("Upload url is: %s\n", upload_url);
         if (upload_session_file(session_file, upload_url))
         {
             printf("Upload completed successfully!\n");
