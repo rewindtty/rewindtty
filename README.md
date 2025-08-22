@@ -148,7 +148,7 @@ Commands:
   record [file]      Start recording a new terminal session to specified file (default: data/session.json)
   replay [file]      Replay a recorded session from specified file (default: data/session.json)
   analyze [file]     Analyze a recorded session and generate statistics report (default: data/session.json)
-  upload [file] [url] Upload a recorded session to a remote server (default file: data/session.json)
+  upload [file] Upload a recorded session to a remote server (default file: data/session.json)
 ```
 
 ## Browser Player
