@@ -14,7 +14,7 @@
 #endif
 
 #ifndef PLAYER_URL
-#define PLAYER_URL "https://play.rewindtty.dev"
+#define PLAYER_URL "https://play.rewindtty.dev/play"
 #endif
 
 #endif

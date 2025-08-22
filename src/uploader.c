@@ -112,7 +112,7 @@ int upload_session_data(const char *json_data, const char *upload_url)
                         if (id_value)
                         {
                             printf("You can check here: %s/%s\n", PLAYER_URL, id_value);
-                            free(id_value); // non dimenticare di liberare la memoria
+                            free(id_value);
                         }
 
                         cJSON_Delete(json);
