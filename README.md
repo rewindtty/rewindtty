@@ -12,9 +12,9 @@ A terminal session recorder and replayer written in C that allows you to capture
   </picture>
 </p>
 
-## ⚠️ Disclaimer
+## Disclaimer
 
-This is a hobby project created for fun and learning purposes. It's still in active development and may contain bugs or incomplete features. If you encounter any issues, please report them in the [Issues](https://github.com/debba/rewindtty/issues) section. Contributions are welcome and encouraged!
+⚠️ This is a hobby project created for fun and learning purposes. It's still in active development and may contain bugs or incomplete features. If you encounter any issues, please report them in the [Issues](https://github.com/debba/rewindtty/issues) section. Contributions are welcome and encouraged!
 
 ## Features
 
@@ -27,11 +27,12 @@ This is a hobby project created for fun and learning purposes. It's still in act
 - **Web browser player**: Advanced browser-based player available at https://github.com/rewindtty/browser_player
 - **Upload to cloud**: Upload sessions to remote servers for sharing and collaboration
 
-## Interactive Mode ⚠️ Experimental
+## Interactive Mode
+
 
 rewindtty now supports an **interactive mode** that provides a script-like experience similar to `script` and `scriptreplay` utilities. This mode allows you to record and replay terminal sessions in real-time with enhanced interactivity.
 
-**Note**: This feature is currently experimental and may have limitations or bugs.
+**Note**: ⚠️ This feature is currently experimental and may have limitations or bugs.
 
 ### Interactive vs Legacy Mode Comparison
 
@@ -97,7 +98,7 @@ To start recording a terminal session:
 
 This will create a new session file (defaults to `data/session.json` if no file is specified) and begin capturing all terminal activity.
 
-For information about the `--interactive` flag, see [Interactive Mode](#interactive-mode--experimental).
+For information about the `--interactive` flag, see [Interactive Mode](#interactive-mode).
 For information about the `--upload` flag, see [Uploading a Session](#uploading-a-session).
 
 ### Uploading a Session 
