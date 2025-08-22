@@ -92,12 +92,15 @@ make clean
 To start recording a terminal session:
 
 ```bash
-./build/rewindtty record [--interactive] [file]
+./build/rewindtty record [--interactive] [--upload] [file]
 ```
 
 This will create a new session file (defaults to `data/session.json` if no file is specified) and begin capturing all terminal activity.
 
-### Uploading a Session
+For information about the `--interactive` flag, see [Interactive Mode](#interactive-mode--experimental).
+For information about the `--upload` flag, see [Uploading a Session](#uploading-a-session).
+
+### Uploading a Session 
 
 To upload a recorded session to a remote server:
 
@@ -197,7 +200,14 @@ The default upload server endpoints are:
 - Upload: `https://upload.rewindtty.dev/upload`
 - Player: `https://play.rewindtty.dev`
 
-These can be customized by modifying the constants in `src/consts.h`.
+
+To configure a custom upload URL or custom player URL, you can make the project with custom `PLAYER_URL` and/or `UPLOAD_URL`.
+
+
+```bash
+make UPLOAD_URL=http://localhost:5500/upload PLAYER_URL=http://localhost:3000
+```
+
 
 ## Signal Handling
 
