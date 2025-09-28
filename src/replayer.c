@@ -92,6 +92,8 @@ char *decode_escaped_sequences(const char *input)
 
     size_t len = strlen(input);
     char *output = malloc(len * 2); // Extra space for safety
+    if (!output)
+        return NULL;
     size_t out_pos = 0;
     size_t i = 0;
 

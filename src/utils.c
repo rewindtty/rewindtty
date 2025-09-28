@@ -17,26 +17,46 @@ char *to_lower(const char *str)
 
 char *read_file(const char *filename)
 {
-    FILE *file = fopen(filename, "r");
+    FILE *file = fopen(filename, "rb");
     if (!file)
     {
-        fprintf(stderr, "Error: Cannot open file '%s'\n", filename);
+        perror(filename); 
         return NULL;
     }
 
-    fseek(file, 0, SEEK_END);
+    if (fseek(file, 0, SEEK_END))
+    {
+        perror("fseek"); 
+        fclose(file);
+        return NULL; 
+    }
+
     long file_size = ftell(file);
+    if (file_size < 0)
+    {
+        perror("ftell"); 
+        fclose(file);
+        return NULL;
+    }
     rewind(file);
 
     char *content = malloc(file_size + 1);
     if (!content)
     {
+        fprintf(stderr, "Error cannot allocate %ld bytes", file_size);
         fclose(file);
         return NULL;
     }
 
-    fread(content, 1, file_size, file);
-    content[file_size] = '\0';
+    size_t bytes_read = fread(content, 1, file_size, file);
     fclose(file);
+    if (bytes_read != (size_t)file_size)
+    {
+        fprintf(stderr, "Error: fread failed (read %zu / %ld)\n", bytes_read, file_size);
+        free(content); 
+        return NULL;
+    }
+
+    content[file_size] = '\0';
     return content;
 }
