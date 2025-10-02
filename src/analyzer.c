@@ -13,10 +13,11 @@ static const char *error_keywords[] = {
 
 static int has_error_indicators(const char *data)
 {
-
     if (!data)
         return 0;
     char *lower_data = to_lower(data);
+    if (!lower_data)
+        return 0; 
 
     int has_errors = 0;
     for (size_t i = 0; i < (sizeof(error_keywords) / sizeof(error_keywords[0])); i++)
@@ -77,6 +78,11 @@ static void count_command_frequency(CommandInfo *commands, int count, CommandInf
         if (!found && freq_count < 1000)
         {
             freq_table[freq_count].command = strdup(commands[i].command);
+            if (!freq_table[freq_count].command)
+            {
+                fprintf(stderr, "Error: Out of memory duplicating command for frequency table\n");
+                continue; // Skip this command
+            }
             freq_table[freq_count].frequency = 1;
             freq_table[freq_count].total_duration = commands[i].duration;
             freq_count++;
@@ -101,7 +107,20 @@ static void count_command_frequency(CommandInfo *commands, int count, CommandInf
     for (int i = 0; i < *top_count; i++)
     {
         top_commands[i] = malloc(sizeof(CommandInfo));
+        if (!top_commands[i])
+        {
+            fprintf(stderr, "Error: Out of memory allocating top command\n");
+            top_commands[i] = NULL;
+            continue; // Skip
+        }
         top_commands[i]->command = strdup(freq_table[i].command);
+        if (!top_commands[i]->command)
+        {
+            fprintf(stderr, "Error: Out of memory duplicating command for top command\n");
+            free(top_commands[i]);
+            top_commands[i] = NULL;
+            continue;
+        }
         top_commands[i]->duration = freq_table[i].total_duration;
         top_commands[i]->chunk_count = freq_table[i].frequency; // Using chunk_count as frequency
     }
@@ -130,6 +149,8 @@ void analyze_session(const char *session_file)
     }
 
     cJSON *sessions_array = NULL;
+    SessionAnalysis analysis = {0};
+    CommandInfo *sorted_by_duration = NULL;
     
     // Check if this is the new format with metadata
     if (cJSON_IsObject(json))
@@ -141,9 +162,7 @@ void analyze_session(const char *session_file)
             if (interactive_mode && cJSON_IsBool(interactive_mode) && cJSON_IsTrue(interactive_mode))
             {
                 fprintf(stderr, "Error: Analyze is currently unavailable in interactive mode\n");
-                cJSON_Delete(json);
-                free(json_string);
-                return;
+                goto cleanup; 
             }
         }
         
@@ -151,9 +170,7 @@ void analyze_session(const char *session_file)
         if (!sessions_array || !cJSON_IsArray(sessions_array))
         {
             fprintf(stderr, "Error: Session file should contain a 'sessions' array\n");
-            cJSON_Delete(json);
-            free(json_string);
-            return;
+            goto cleanup;
         }
     }
     else if (cJSON_IsArray(json))
@@ -164,15 +181,18 @@ void analyze_session(const char *session_file)
     else
     {
         fprintf(stderr, "Error: Session file should contain an array of commands or a metadata object\n");
-        cJSON_Delete(json);
-        free(json_string);
-        return;
+        goto cleanup;
     }
 
-    SessionAnalysis analysis = {0};
     int array_size = cJSON_GetArraySize(sessions_array);
     analysis.total_commands = array_size;
     analysis.commands = malloc(array_size * sizeof(CommandInfo));
+    if (!analysis.commands)
+    {
+        fprintf(stderr, "Error: cannot allocate memory for %d commands\n", array_size);
+        goto cleanup; 
+    }
+    memset(analysis.commands, 0, array_size * sizeof(CommandInfo));
 
     double total_duration = 0;
     double first_start_time = -1;
@@ -193,6 +213,11 @@ void analyze_session(const char *session_file)
         if (command && start_time && end_time && duration)
         {
             analysis.commands[i].command = strdup(cJSON_GetStringValue(command));
+            if (!analysis.commands[i].command)
+            {
+                fprintf(stderr, "Error: out of memory duplicating command string\n");
+                goto cleanup; 
+            }
             analysis.commands[i].start_time = cJSON_GetNumberValue(start_time);
             analysis.commands[i].end_time = cJSON_GetNumberValue(end_time);
             analysis.commands[i].duration = cJSON_GetNumberValue(duration);
@@ -220,6 +245,11 @@ void analyze_session(const char *session_file)
                     if (data && has_error_indicators(cJSON_GetStringValue(data)))
                     {
                         analysis.commands[i].stderr_data = strdup(cJSON_GetStringValue(data));
+                        if (!analysis.commands[i].stderr_data)
+                        {
+                            fprintf(stderr, "Error: out of memory duplicating stderr data\n");
+                            goto cleanup;
+                        }
                         analysis.commands[i].has_stderr = 1;
                         analysis.commands_with_stderr++;
                         break;
@@ -240,7 +270,12 @@ void analyze_session(const char *session_file)
                             analysis.top_commands, &analysis.top_commands_count);
 
     // Find slowest commands
-    CommandInfo *sorted_by_duration = malloc(analysis.total_commands * sizeof(CommandInfo));
+    sorted_by_duration = malloc(analysis.total_commands * sizeof(CommandInfo));
+    if (!sorted_by_duration)
+    {
+        fprintf(stderr, "Error: cannot allocate memory for sorting buffer\n");
+        goto cleanup;
+    }
     memcpy(sorted_by_duration, analysis.commands, analysis.total_commands * sizeof(CommandInfo));
 
     for (int i = 0; i < analysis.total_commands - 1; i++)
@@ -276,11 +311,7 @@ void analyze_session(const char *session_file)
     print_session_summary(&analysis);
 
     // Cleanup
-    for (int i = 0; i < analysis.top_commands_count; i++)
-    {
-        free(analysis.top_commands[i]->command);
-        free(analysis.top_commands[i]);
-    }
+cleanup: 
     free(sorted_by_duration);
     free_session_analysis(&analysis);
     cJSON_Delete(json);
@@ -340,12 +371,39 @@ void print_session_summary(SessionAnalysis *analysis)
 
 void free_session_analysis(SessionAnalysis *analysis)
 {
+    if (!analysis)
+        return; 
+
+    // Free individual commands
     if (analysis->commands)
     {
         for (int i = 0; i < analysis->total_commands; i++)
         {
             free(analysis->commands[i].command);
+            free(analysis->commands[i].stderr_data);
         }
         free(analysis->commands);
+        analysis->commands = NULL; 
     }
+
+    // Free top commands
+    for (int i = 0; i < analysis->top_commands_count; i++)
+    {
+        if (analysis->top_commands[i])
+        {
+            free(analysis->top_commands[i]->command);
+            free(analysis->top_commands[i]);
+            analysis->top_commands[i] = NULL;
+        }
+    }
+    analysis->top_commands_count = 0;
+
+    // Reset other fields
+    analysis->total_commands = 0;
+    analysis->commands_with_stderr = 0;
+    analysis->total_duration = 0;
+    analysis->avg_time_per_command = 0;
+    analysis->stderr_percentage = 0;
+    analysis->slowest_commands_count = 0;
+    analysis->error_commands_count = 0;
 }

@@ -38,11 +38,18 @@ double get_timestamp()
 TTYSession *create_tty_session(const char *command)
 {
     TTYSession *session = malloc(sizeof(TTYSession));
+    if (!session)
+        return NULL;
     strncpy(session->command, command, sizeof(session->command) - 1);
     session->command[sizeof(session->command) - 1] = '\0';
     session->start_time = get_timestamp();
     session->end_time = 0;
     session->chunks = malloc(sizeof(TTYChunk) * 100);
+    if (!session->chunks)
+    {
+        free(session); 
+        return NULL;
+    }
     session->chunk_count = 0;
     session->chunk_capacity = 100;
     return session;
@@ -117,7 +124,14 @@ void free_tty_session(TTYSession *session)
 SessionData *create_session_data(int interactive_mode)
 {
     SessionData *data = malloc(sizeof(SessionData));
+    if (!data)
+        return NULL; 
     data->sessions = malloc(sizeof(TTYSession *) * 10);
+    if (!data->sessions)
+    {
+        free(data);
+        return NULL;
+    }
     data->session_count = 0;
     data->session_capacity = 10;
     data->interactive_mode = interactive_mode;
@@ -215,6 +229,11 @@ TTYSession *exec_and_capture_pty_realtime(
     pid_t pid;
     struct termios term_attrs, raw_attrs;
     TTYSession *session = create_tty_session(command);
+    if (!session)
+    {
+        fprintf(stderr, "Failed to create TTY session\n"); 
+        return NULL;
+    }
 
     if (tcgetattr(STDIN_FILENO, &term_attrs) != 0)
     {
@@ -367,8 +386,15 @@ void signal_handler(int signal)
 InputBuffer *create_input_buffer()
 {
     InputBuffer *buf = malloc(sizeof(InputBuffer));
+    if (!buf)
+        return NULL;
     buf->capacity = 1024;
     buf->buffer = malloc(buf->capacity);
+    if (!buf->buffer)
+    {
+        free(buf);
+        return NULL;
+    }
     buf->size = 0;
     return buf;
 }
@@ -447,7 +473,19 @@ void start_interactive_recording(const char *filename)
 
     // Initialize session data
     global_session_data = create_session_data(1); // interactive mode
+    if (!global_session_data)
+    {
+        fprintf(stderr, "Failed to create a session\n");
+        return; 
+    }
     current_filename = strdup(filename);
+    if (!current_filename)
+    {
+        fprintf(stderr, "Error: out of memory for filename\n");
+        free_session_data(global_session_data);
+        global_session_data = NULL; 
+        return; 
+    }
 
     const char *shell_path = getenv("SHELL");
     if (!shell_path)
@@ -456,9 +494,12 @@ void start_interactive_recording(const char *filename)
     printf("Interactive TTY recording started. Use your shell normally.\n");
     printf("Press Ctrl+D or type 'exit' to stop recording.\n");
 
-    int master_fd;
-    pid_t pid;
+    int master_fd = -1;
+    pid_t pid = -1;
     struct termios term_attrs, raw_attrs;
+    InputBuffer *input_buf = NULL;
+    InputBuffer *output_buf = NULL;
+    TTYSession *current_session = NULL;
 
     if (tcgetattr(STDIN_FILENO, &term_attrs) != 0)
     {
@@ -506,9 +547,19 @@ void start_interactive_recording(const char *filename)
         fcntl(master_fd, F_SETFL, flags | O_NONBLOCK);
 
         // Command detection variables
-        InputBuffer *input_buf = create_input_buffer();
-        InputBuffer *output_buf = create_input_buffer();
-        TTYSession *current_session = NULL;
+        input_buf = create_input_buffer();
+        if (!input_buf)
+        {
+            fprintf(stderr, "Error: failed to create input buffer\n");
+            goto cleanup; 
+        }
+        output_buf = create_input_buffer();
+        if (!output_buf)
+        {
+            fprintf(stderr, "Error: failed to create output buffer\n");
+            goto cleanup;  
+        }
+
         int in_command = 0;
         int waiting_for_prompt = 1;
 
@@ -588,6 +639,10 @@ void start_interactive_recording(const char *filename)
 
                             // Start new session
                             current_session = create_tty_session(command_str);
+                            if (!current_session)
+                            {
+                                fprintf(stderr, "Warning: failed to create TTY session\n"); 
+                            }
                             in_command = 1;
                         }
 
@@ -637,13 +692,19 @@ void start_interactive_recording(const char *filename)
             waitpid(pid, &status, 0);
         }
 
-        close(master_fd);
-        child_running = 0;
-        current_child_pid = 0;
-
-        free_input_buffer(input_buf);
-        free_input_buffer(output_buf);
     }
+
+cleanup: 
+    if (master_fd >= 0)
+        close(master_fd); 
+
+    child_running = 0; 
+    current_child_pid = 0;
+
+    if (input_buf)
+        free_input_buffer(input_buf);
+    if (output_buf)
+        free_input_buffer(output_buf);
 
     // Write final JSON file
     write_sessions_to_file(filename, global_session_data);
@@ -669,7 +730,19 @@ void start_recording(const char *filename)
 
     // Initialize session data
     global_session_data = create_session_data(0); // non-interactive mode
+    if (!global_session_data)
+    {
+        fprintf(stderr, "Failed to create a session\n");
+        return; 
+    }
     current_filename = strdup(filename);
+    if (!current_filename)
+    {
+        fprintf(stderr, "Error: out of memory for filename\n");
+        free_session_data(global_session_data);
+        global_session_data = NULL; 
+        return; 
+    }
 
     printf("TTY Real-time Recorder started. Type 'exit' to quit.\n");
 
