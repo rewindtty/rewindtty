@@ -15,6 +15,7 @@
 #include <signal.h>
 #include <sys/select.h>
 #include <sys/time.h>
+#include <sys/signalfd.h> 
 
 #define BUF_SIZE 8192
 #define MAX_CHUNKS_PER_COMMAND 1000
@@ -27,6 +28,38 @@ static pid_t current_child_pid = 0;
 
 static SessionData *global_session_data = NULL;
 static char *current_filename = NULL;
+
+int signal_fd = -1; 
+
+int setup_signal_fd(void)
+{
+    sigset_t mask; 
+    sigemptyset(&mask); 
+    sigaddset(&mask, SIGINT); 
+    sigaddset(&mask, SIGTERM); 
+    sigaddset(&mask, SIGHUP); 
+
+    // Block signals so they don't interrupt the process
+    if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
+    {
+        perror("sigprocmask"); 
+        return -1; 
+    }
+
+    // SFD_CLOEXEC automatically closes fd in child processes after exec
+    signal_fd = signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC); 
+    if (signal_fd == -1)
+        return -1; 
+
+    return 0; 
+}
+
+void clean_signal_fd(void)
+{
+    if (signal_fd > -1)
+        close(signal_fd); 
+    signal_fd = -1; 
+}
 
 double get_timestamp()
 {
@@ -219,6 +252,37 @@ void free_session_data(SessionData *data)
     free(data);
 }
 
+void handle_signal_cleanup(int signal)
+{
+    if (signal == SIGINT && child_running && current_child_pid > 0)
+    {
+        // Kill the child process group
+        kill(-current_child_pid, SIGINT);
+        return;
+    }
+
+    printf("\n[!] Signal received (%d), saving session file...\n", signal);
+
+    // Save session data if available
+    if (global_session_data)
+    {
+        const char *filename = current_filename ? current_filename : "emergency_session.json";
+        write_sessions_to_file(filename, global_session_data);
+        free_session_data(global_session_data);
+        global_session_data = NULL;
+    }
+
+    if (current_filename)
+    {
+        free(current_filename);
+        current_filename = NULL;
+    }
+
+    clean_signal_fd(); 
+
+    _exit(1);
+}
+
 TTYSession *exec_and_capture_pty_realtime(
     const char *command,
     const char *shell_path,
@@ -256,9 +320,13 @@ TTYSession *exec_and_capture_pty_realtime(
     if (pid == 0)
     {
         // Child process
-        signal(SIGINT, SIG_DFL);
-        signal(SIGTERM, SIG_DFL);
-        signal(SIGHUP, SIG_DFL);
+        // Unblock the signals in the child 
+        setsid(); 
+
+        sigset_t unmask;
+        sigemptyset(&unmask);
+        if (sigprocmask(SIG_SETMASK, &unmask, NULL) == -1)
+            perror("sigprocmask child");
 
         execl(shell_path, shell_path, "-c", command, (char *)NULL);
         perror("execl");
@@ -276,7 +344,11 @@ TTYSession *exec_and_capture_pty_realtime(
         int status;
         fd_set read_fds;
         int stdin_fd = STDIN_FILENO;
-        int max_fd = (master_fd > stdin_fd) ? master_fd : stdin_fd;
+        int max_fd = master_fd; 
+        if (stdin_fd > max_fd) 
+            max_fd = stdin_fd; 
+        if (signal_fd > max_fd)
+            max_fd = signal_fd; 
 
         // Set master_fd to non-blocking
         int flags = fcntl(master_fd, F_GETFL);
@@ -287,12 +359,23 @@ TTYSession *exec_and_capture_pty_realtime(
             FD_ZERO(&read_fds);
             FD_SET(master_fd, &read_fds);
             FD_SET(stdin_fd, &read_fds);
+            FD_SET(signal_fd, &read_fds);
 
             struct timeval timeout = {0, 10000}; // 10ms timeout
             int select_result = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
 
             if (select_result > 0)
             {
+                if (FD_ISSET(signal_fd, &read_fds))
+                {
+                    struct signalfd_siginfo fdsi;
+                    ssize_t s = read(signal_fd, &fdsi, sizeof(fdsi));
+                    if (s == sizeof(fdsi))
+                    {
+                        handle_signal_cleanup(fdsi.ssi_signo); 
+                    }
+                }
+
                 if (FD_ISSET(master_fd, &read_fds))
                 {
                     n = read(master_fd, buffer, BUF_SIZE - 1);
@@ -354,33 +437,6 @@ TTYSession *exec_and_capture_pty_realtime(
     }
 }
 
-void signal_handler(int signal)
-{
-    if (signal == SIGINT && child_running && current_child_pid > 0)
-    {
-        kill(current_child_pid, SIGINT);
-        return;
-    }
-
-    printf("\n[!] Signal received (%d), saving session file...\n", signal);
-
-    // Save session data if available
-    if (global_session_data)
-    {
-        const char *filename = current_filename ? current_filename : "emergency_session.json";
-        write_sessions_to_file(filename, global_session_data);
-        free_session_data(global_session_data);
-        global_session_data = NULL;
-    }
-
-    if (current_filename)
-    {
-        free(current_filename);
-        current_filename = NULL;
-    }
-
-    _exit(1);
-}
 
 // Initialize input buffer
 InputBuffer *create_input_buffer()
@@ -467,9 +523,11 @@ void clean_command_string(char *cmd)
 
 void start_interactive_recording(const char *filename)
 {
-    signal(SIGINT, signal_handler);
-    signal(SIGTERM, signal_handler);
-    signal(SIGHUP, signal_handler);
+    if (setup_signal_fd() == -1)
+    {
+        fprintf(stderr, "Failed to setup signal fd\n"); 
+        return; 
+    }
 
     // Initialize session data
     global_session_data = create_session_data(1); // interactive mode
@@ -520,9 +578,12 @@ void start_interactive_recording(const char *filename)
     if (pid == 0)
     {
         // Child process: start interactive shell
-        signal(SIGINT, SIG_DFL);
-        signal(SIGTERM, SIG_DFL);
-        signal(SIGHUP, SIG_DFL);
+        setsid(); 
+
+        sigset_t unmask;
+        sigemptyset(&unmask);
+        if (sigprocmask(SIG_SETMASK, &unmask, NULL) == -1)
+            perror("sigprocmask child unblock");
 
         execl(shell_path, shell_path, "-i", (char *)NULL);
         perror("execl");
@@ -540,7 +601,9 @@ void start_interactive_recording(const char *filename)
         int status;
         fd_set read_fds;
         int stdin_fd = STDIN_FILENO;
-        int max_fd = (master_fd > stdin_fd) ? master_fd : stdin_fd;
+        int max_fd = master_fd; 
+        if (stdin_fd > max_fd) max_fd = stdin_fd;  
+        if (signal_fd > max_fd) max_fd = signal_fd;  
 
         // Set master_fd to non-blocking
         int flags = fcntl(master_fd, F_GETFL);
@@ -568,12 +631,23 @@ void start_interactive_recording(const char *filename)
             FD_ZERO(&read_fds);
             FD_SET(master_fd, &read_fds);
             FD_SET(stdin_fd, &read_fds);
+            FD_SET(signal_fd, &read_fds);
 
             struct timeval timeout = {0, 10000}; // 10ms timeout
             int select_result = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
 
             if (select_result > 0)
             {
+                if (FD_ISSET(signal_fd, &read_fds))
+                {
+                    struct signalfd_siginfo fdsi;
+                    ssize_t s = read(signal_fd, &fdsi, sizeof(fdsi));
+                    if (s == sizeof(fdsi))
+                    {
+                        handle_signal_cleanup(fdsi.ssi_signo); 
+                    }
+                }
+
                 if (FD_ISSET(master_fd, &read_fds))
                 {
                     n = read(master_fd, buffer, BUF_SIZE - 1);
@@ -717,6 +791,8 @@ cleanup:
         current_filename = NULL;
     }
 
+    clean_signal_fd(); 
+
     printf("\nInteractive recording session saved to: %s\n", filename);
 }
 
@@ -724,9 +800,11 @@ void start_recording(const char *filename)
 {
     char command[1024];
 
-    signal(SIGINT, signal_handler);
-    signal(SIGTERM, signal_handler);
-    signal(SIGHUP, signal_handler);
+    if (setup_signal_fd() == -1)
+    {
+        fprintf(stderr, "Failed to setup signal fd\n"); 
+        return; 
+    }
 
     // Initialize session data
     global_session_data = create_session_data(0); // non-interactive mode
@@ -751,30 +829,54 @@ void start_recording(const char *filename)
         printf("rewindtty> ");
         fflush(stdout);
 
-        if (!fgets(command, sizeof(command), stdin))
-            break;
+        fd_set read_fds; 
+        FD_ZERO(&read_fds); 
+        int stdin_fd = STDIN_FILENO;
+        FD_SET(stdin_fd, &read_fds); 
+        FD_SET(signal_fd, &read_fds); 
 
-        command[strcspn(command, "\n")] = 0;
+        int max_fd = (stdin_fd > signal_fd) ? stdin_fd : signal_fd; 
+        int select_result = select(max_fd + 1, &read_fds, NULL, NULL, NULL); 
+        if (select_result <= 0)
+            continue; 
 
-        if (strcmp(command, "exit") == 0)
-            break;
-
-        const char *shell_path = getenv("SHELL");
-        if (!shell_path)
-            shell_path = "/bin/sh";
-
-        printf("Recording command: %s\n", command);
-        printf("Press Ctrl+C to interrupt the command, 'exit' to quit recording.\n");
-
-        TTYSession *session = exec_and_capture_pty_realtime(
-            command,
-            shell_path,
-            &child_running,
-            &current_child_pid);
-
-        if (session)
+        if (FD_ISSET(signal_fd, &read_fds))
         {
-            add_session_to_data(global_session_data, session);
+            struct signalfd_siginfo fdsi;
+            ssize_t s = read(signal_fd, &fdsi, sizeof(fdsi));
+            if (s == sizeof(fdsi))
+            {
+                handle_signal_cleanup(fdsi.ssi_signo); 
+            }
+        }
+
+        if (FD_ISSET(stdin_fd, &read_fds))
+        {
+            if (!fgets(command, sizeof(command), stdin))
+                break;
+
+            command[strcspn(command, "\n")] = 0;
+
+            if (strcmp(command, "exit") == 0)
+                break;
+
+            const char *shell_path = getenv("SHELL");
+            if (!shell_path)
+                shell_path = "/bin/sh";
+
+            printf("Recording command: %s\n", command);
+            printf("Press Ctrl+C to interrupt the command, 'exit' to quit recording.\n");
+
+            TTYSession *session = exec_and_capture_pty_realtime(
+                command,
+                shell_path,
+                &child_running,
+                &current_child_pid);
+
+            if (session)
+            {
+                add_session_to_data(global_session_data, session);
+            }
         }
     }
 
@@ -788,6 +890,8 @@ void start_recording(const char *filename)
         free(current_filename);
         current_filename = NULL;
     }
+
+    clean_signal_fd(); 
 
     printf("Recording session saved to: %s\n", filename);
 }
