@@ -1,3 +1,5 @@
+[![Discord](https://img.shields.io/discord/1470772941296894128?color=5865F2&logo=discord&logoColor=white)](https://discord.gg/WgsVw69F)
+
 <p align="center">
   <picture>
     <img style="max-width:400px;height:auto"  src="https://www.rewindtty.dev/assets/images/logo-black.png" alt="rewindtty logo">
@@ -11,6 +13,8 @@ A terminal session recorder and replayer written in C that allows you to capture
     <img src="https://www.rewindtty.dev/assets/images/record.gif" alt="rewindtty demo">
   </picture>
 </p>
+
+**Discord** - [Join our discord server](https://discord.gg/WgsVw69F) and chat with the maintainers.
 
 ## ⚠️ Disclaimer
 
